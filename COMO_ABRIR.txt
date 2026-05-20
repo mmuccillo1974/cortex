@@ -1,0 +1,13 @@
+COMO ABRIR O CORTEX
+
+Opcao recomendada:
+1. Abra esta pasta no Windows Explorer.
+2. Clique duas vezes no arquivo ABRIR_CORTEX.bat.
+3. O navegador deve abrir automaticamente.
+
+Opcao alternativa:
+1. Clique duas vezes em index.html.
+
+Se aparecer aviso do Windows ou PowerShell, permita a execucao.
+O arquivo ABRIR_CORTEX.bat apenas inicia um servidor local na sua propria maquina
+e abre o endereco do CORTEX no navegador.

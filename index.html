@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CORTEX - Centro de Organização de Tarefas Executivas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <strong>CORTEX</strong>
+            <span>STI / DPMS</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Módulos">
+          <button class="nav-item active" data-view="dashboard" type="button">
+            <span data-lucide="layout-dashboard"></span>
+            Dashboard
+          </button>
+          <button class="nav-item" data-view="projetos" type="button">
+            <span data-lucide="kanban-square"></span>
+            Projetos
+          </button>
+          <button class="nav-item" data-view="licitacoes" type="button">
+            <span data-lucide="file-search"></span>
+            Licitações
+          </button>
+          <button class="nav-item" data-view="contratos" type="button">
+            <span data-lucide="file-signature"></span>
+            Contratos
+          </button>
+          <button class="nav-item" data-view="pessoas" type="button">
+            <span data-lucide="users-round"></span>
+            Pessoas
+          </button>
+          <button class="nav-item" data-view="documentos" type="button">
+            <span data-lucide="folder-up"></span>
+            Documentos
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span>Protótipo local</span>
+          <strong>v0.1</strong>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Centro de Organização de Tarefas Executivas</p>
+            <h1 id="page-title">Dashboard executivo</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="export-button" type="button">
+              <span data-lucide="download"></span>
+              Exportar
+            </button>
+            <button class="icon-button" id="voice-button" type="button" title="Entrada rápida por voz">
+              <span data-lucide="mic"></span>
+            </button>
+            <button class="primary-button" id="new-entry-button" type="button">
+              <span data-lucide="plus"></span>
+              Novo registro
+            </button>
+          </div>
+        </header>
+
+        <section class="quick-command" aria-label="Busca e comando rápido">
+          <span data-lucide="search"></span>
+          <input id="global-search" type="search" placeholder="Buscar por projeto, SEI, contrato, área, descrição ou comentário">
+          <button id="clear-search" type="button" title="Limpar busca">
+            <span data-lucide="x"></span>
+          </button>
+        </section>
+
+        <section class="view active" id="view-dashboard">
+          <div class="kpi-grid" id="kpi-grid"></div>
+
+          <div class="content-grid">
+            <section class="panel wide">
+              <div class="panel-header">
+                <div>
+                  <h2>Distribuição por área</h2>
+                  <p>Volume de demandas por unidade responsável.</p>
+                </div>
+              </div>
+              <div class="bar-list" id="area-bars"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Status geral</h2>
+                  <p>Situação consolidada da base atual.</p>
+                </div>
+              </div>
+              <div class="status-list" id="status-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Alertas</h2>
+                  <p>Itens que pedem saneamento.</p>
+                </div>
+              </div>
+              <div class="alert-list" id="alert-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-projetos">
+          <div class="filters">
+            <label>
+              Categoria
+              <select id="filter-category"></select>
+            </label>
+            <label>
+              Área
+              <select id="filter-area"></select>
+            </label>
+            <label>
+              Status
+              <select id="filter-status"></select>
+            </label>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Projetos e demandas</h2>
+                <p id="project-count">Base importada da planilha CORTEX.</p>
+              </div>
+              <button class="ghost-button" id="reset-filters" type="button">
+                <span data-lucide="rotate-ccw"></span>
+                Limpar filtros
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Projeto</th>
+                    <th>Categoria</th>
+                    <th>Área</th>
+                    <th>Status</th>
+                    <th>SEI</th>
+                    <th>Prazo</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="project-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="view-licitacoes"></section>
+        <section class="view" id="view-contratos"></section>
+        <section class="view" id="view-pessoas"></section>
+        <section class="view" id="view-documentos"></section>
+      </main>
+    </div>
+
+    <dialog id="entry-dialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Entrada unitária</p>
+            <h2>Novo registro</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="submit" title="Fechar">
+            <span data-lucide="x"></span>
+          </button>
+        </div>
+        <div class="form-grid">
+          <label>
+            Tipo
+            <select id="entry-type">
+              <option value="projeto">Projeto/demanda</option>
+              <option value="licitacao">Licitação</option>
+              <option value="contrato">Contrato</option>
+              <option value="pessoa">Pessoa</option>
+              <option value="documento">Documento</option>
+            </select>
+          </label>
+          <label>
+            Título
+            <input id="entry-title" type="text" placeholder="Ex.: Renovação de contrato de link">
+          </label>
+          <label>
+            Área
+            <input id="entry-area" type="text" placeholder="Ex.: INFRA">
+          </label>
+          <label>
+            Status
+            <input id="entry-status" type="text" placeholder="Ex.: Em andamento">
+          </label>
+          <label>
+            Prazo
+            <input id="entry-deadline" type="date">
+          </label>
+          <label>
+            Processo SEI
+            <input id="entry-sei" type="text" placeholder="Ex.: 33/000000/2026">
+          </label>
+          <label>
+            Arquivo
+            <input id="entry-file" type="file">
+          </label>
+          <label class="full">
+            Descrição
+            <textarea id="entry-description" rows="4" placeholder="Registre a demanda, encaminhamento ou observação principal"></textarea>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit">Cancelar</button>
+          <button class="primary-button" id="save-entry" value="default" type="submit">Salvar rascunho</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="detail-dialog">
+      <div class="dialog-card">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" id="detail-kind">Registro</p>
+            <h2 id="detail-title">Detalhe</h2>
+          </div>
+          <button class="icon-button" id="close-detail" type="button" title="Fechar">
+            <span data-lucide="x"></span>
+          </button>
+        </div>
+        <div class="detail-grid" id="detail-content"></div>
+      </div>
+    </dialog>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="data/projetos.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
