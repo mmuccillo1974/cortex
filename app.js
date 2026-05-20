@@ -216,9 +216,9 @@ function renderDashboard() {
   const comContrato = contratoRecords().length;
 
   elements.kpiGrid.innerHTML = [
-    kpi("database", total, "Registros de gestao"),
+    kpi("database", total, "Registros de gest\u00e3o"),
     kpi("activity", emAndamento, "Demandas em andamento"),
-    kpi("file-search", licitacoes, "Itens de licitacao"),
+    kpi("file-search", licitacoes, "Itens de licita\u00e7\u00e3o"),
     kpi("calendar-alert", semPrazo, "Itens sem prazo"),
   ].join("");
 
@@ -240,12 +240,12 @@ function renderProjects() {
       <tr>
         <td>
           <div class="project-title">
-            <strong>${escapeHtml(item.projeto || "Sem titulo")}</strong>
-            <span>${escapeHtml(item.descricao || "Sem descricao cadastrada")}</span>
+            <strong>${escapeHtml(item.projeto || "Sem t\u00edtulo")}</strong>
+            <span>${escapeHtml(item.descricao || "Sem descri\u00e7\u00e3o cadastrada")}</span>
           </div>
         </td>
         <td>${badge(item.categoria || "Sem categoria")}</td>
-        <td>${escapeHtml(item.area || "Nao definida")}</td>
+        <td>${escapeHtml(item.area || "N\u00e3o definida")}</td>
         <td>${badge(item.status || "Sem status", statusClass(item.status))}</td>
         <td>${escapeHtml(item.sei || "-")}</td>
         <td>${formatDate(item.prazo)}</td>
@@ -270,8 +270,8 @@ function renderOperationalModules() {
 function renderLicitacoes() {
   const records = licitacaoRecords();
   renderRecordModule("licitacoes", {
-    title: "Licitacoes",
-    subtitle: "Itens classificados como licitacao, com fase administrativa separada para evolucao futura.",
+    title: "Licita\u00e7\u00f5es",
+    subtitle: "Itens classificados como licita\u00e7\u00e3o, com fase administrativa separada para evolu\u00e7\u00e3o futura.",
     metrics: [
       ["Total", records.length],
       ["Com SEI", records.filter((item) => item.sei).length],
@@ -279,7 +279,7 @@ function renderLicitacoes() {
       ["Sem prazo", records.filter((item) => !item.prazo).length],
     ],
     records,
-    empty: "Nenhuma licitacao encontrada.",
+    empty: "Nenhuma licita\u00e7\u00e3o encontrada.",
   });
 }
 
@@ -292,7 +292,7 @@ function renderContratos() {
       ["Total", records.length],
       ["Com SEI", records.filter((item) => item.sei).length],
       ["Com prazo", records.filter((item) => item.prazo).length],
-      ["Sem area", records.filter((item) => !item.area).length],
+      ["Sem \u00e1rea", records.filter((item) => !item.area).length],
     ],
     records,
     empty: "Nenhum contrato vinculado encontrado.",
@@ -307,7 +307,7 @@ function renderPessoas() {
     projeto: area,
     descricao: `${quantidade} demandas vinculadas`,
     area,
-    status: "Area",
+    status: "\u00c1rea",
     sei: "",
     prazo: "",
     tipo: "area",
@@ -315,16 +315,16 @@ function renderPessoas() {
   const records = [...pessoas, ...areaRecords];
 
   renderRecordModule("pessoas", {
-    title: "Pessoas e areas",
-    subtitle: "Cadastro inicial de equipes, usando as areas encontradas na planilha como ponto de partida.",
+    title: "Pessoas e \u00e1reas",
+    subtitle: "Cadastro inicial de equipes, usando as \u00e1reas encontradas na planilha como ponto de partida.",
     metrics: [
-      ["Areas", areas.length],
+      ["\u00c1reas", areas.length],
       ["Pessoas locais", pessoas.length],
       ["Maior carga", areas[0]?.[1] || 0],
-      ["Sem area", projectLikeRecords().filter((item) => !item.area).length],
+      ["Sem \u00e1rea", projectLikeRecords().filter((item) => !item.area).length],
     ],
     records,
-    empty: "Nenhuma area ou pessoa encontrada.",
+    empty: "Nenhuma \u00e1rea ou pessoa encontrada.",
   });
 }
 
@@ -337,7 +337,7 @@ function renderDocumentos() {
       ...item,
       key: `docref-${item.key}`,
       projeto: item.projeto,
-      descricao: `Referencia documental: ${[item.sei && `SEI ${item.sei}`, item.contrato && `Contrato ${item.contrato}`].filter(Boolean).join(" | ")}`,
+      descricao: `Refer\u00eancia documental: ${[item.sei && `SEI ${item.sei}`, item.contrato && `Contrato ${item.contrato}`].filter(Boolean).join(" | ")}`,
       status: item.contrato ? "Contrato vinculado" : "SEI vinculado",
       tipo: "documento",
     })),
@@ -345,7 +345,7 @@ function renderDocumentos() {
 
   renderRecordModule("documentos", {
     title: "Documentos",
-    subtitle: "Nesta fase, o modulo lista referencias documentais e rascunhos locais de upload.",
+    subtitle: "Nesta fase, o m\u00f3dulo lista refer\u00eancias documentais e rascunhos locais de upload.",
     metrics: [
       ["Rascunhos", documentos.length],
       ["Com SEI", projectLikeRecords().filter((item) => item.sei).length],
@@ -389,12 +389,12 @@ function recordRow(item) {
   return `
     <article class="record-row">
       <div class="record-main">
-        <strong>${escapeHtml(item.projeto || "Sem titulo")}</strong>
-        <span>${escapeHtml(item.descricao || item.comentarios || "Sem descricao")}</span>
+        <strong>${escapeHtml(item.projeto || "Sem t\u00edtulo")}</strong>
+        <span>${escapeHtml(item.descricao || item.comentarios || "Sem descri\u00e7\u00e3o")}</span>
       </div>
       <div class="record-meta">
-        <strong>${escapeHtml(item.area || "Nao definida")}</strong>
-        <span>Area</span>
+        <strong>${escapeHtml(item.area || "N\u00e3o definida")}</strong>
+        <span>\u00c1rea</span>
       </div>
       <div class="record-meta">
         <strong>${escapeHtml(item.sei || item.contrato || "-")}</strong>
@@ -425,7 +425,7 @@ function saveEntry(event) {
   event.preventDefault();
   const title = elements.entryTitle.value.trim();
   if (!title) {
-    alert("Informe um titulo para salvar o registro.");
+    alert("Informe um t\u00edtulo para salvar o registro.");
     return;
   }
 
@@ -465,13 +465,13 @@ function openDetail(key) {
   elements.detailTitle.textContent = record.projeto || "Registro";
   elements.detailContent.innerHTML = [
     detailItem("Categoria", record.categoria || typeLabel(record.tipo)),
-    detailItem("Area", record.area || "Nao definida"),
+    detailItem("\u00c1rea", record.area || "N\u00e3o definida"),
     detailItem("Status/Fase", record.status || "Sem status"),
     detailItem("Prazo", formatDate(record.prazo)),
     detailItem("Processo SEI", record.sei || "-"),
     detailItem("Contrato", record.contrato || "-"),
     detailItem("Arquivo", record.arquivo ? `${record.arquivo.nome} (${formatBytes(record.arquivo.tamanho)})` : "-"),
-    detailItem("Descricao", record.descricao || "Sem descricao cadastrada", true),
+    detailItem("Descri\u00e7\u00e3o", record.descricao || "Sem descri\u00e7\u00e3o cadastrada", true),
     detailItem("Comentarios", record.comentarios || "Sem comentarios", true),
   ].join("");
   elements.detailDialog.showModal();
@@ -485,7 +485,7 @@ function findVirtualRecord(key) {
   if (key.startsWith("area-")) {
     const areaIndex = Number(key.replace("area-", ""));
     const [area, quantidade] = countsBy(projectLikeRecords(), "area")[areaIndex] || [];
-    return area ? { key, tipo: "area", projeto: area, area, status: "Area", descricao: `${quantidade} demandas vinculadas` } : null;
+    return area ? { key, tipo: "area", projeto: area, area, status: "\u00c1rea", descricao: `${quantidade} demandas vinculadas` } : null;
   }
   return null;
 }
@@ -523,7 +523,7 @@ function handleVoiceInput() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    alert("Entrada por voz ainda depende de suporte do navegador. Podemos integrar isso em uma proxima etapa.");
+    alert("Entrada por voz ainda depende de suporte do navegador. Podemos integrar isso em uma pr\u00f3xima etapa.");
     return;
   }
 
@@ -579,11 +579,11 @@ function defaultCategory(tipo) {
 function typeLabel(tipo) {
   const map = {
     projeto: "Projeto/demanda",
-    licitacao: "Licitacao",
+    licitacao: "Licita\u00e7\u00e3o",
     contrato: "Contrato",
     pessoa: "Pessoa",
     documento: "Documento",
-    area: "Area",
+    area: "\u00c1rea",
   };
   return map[tipo] || "Registro";
 }
@@ -591,7 +591,7 @@ function typeLabel(tipo) {
 function countsBy(records, key) {
   const map = new Map();
   records.forEach((item) => {
-    const value = item[key] || "Nao definido";
+    const value = item[key] || "N\u00e3o definido";
     map.set(value, (map.get(value) || 0) + 1);
   });
   return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
@@ -603,7 +603,7 @@ function renderBars(target, counts) {
     .slice(0, 10)
     .map(([label, value]) => `
       <div class="bar-row">
-        <div class="bar-label">${escapeHtml(label || "Nao definido")}</div>
+        <div class="bar-label">${escapeHtml(label || "N\u00e3o definido")}</div>
         <div class="bar-track"><div class="bar-fill" style="width: ${(value / max) * 100}%"></div></div>
         <div class="bar-value">${value}</div>
       </div>
