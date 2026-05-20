@@ -110,6 +110,9 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     const detailButton = event.target.closest("[data-detail-key]");
     if (detailButton) openDetail(detailButton.dataset.detailKey);
+
+    const dashboardLink = event.target.closest("[data-dashboard-filter]");
+    if (dashboardLink) applyDashboardShortcut(dashboardLink.dataset.dashboardFilter);
   });
 }
 
@@ -196,7 +199,7 @@ function applyFilters() {
       item.descricao,
       item.comentarios,
     ].join(" ").toLowerCase();
-    const matchesSearch = !search || haystack.includes(search);
+    const matchesSearch = matchesSpecialSearch(item, search) || (!isSpecialSearch(search) && (!search || haystack.includes(search)));
     return matchesCategory && matchesArea && matchesStatus && matchesSearch;
   });
 
@@ -216,10 +219,10 @@ function renderDashboard() {
   const comContrato = contratoRecords().length;
 
   elements.kpiGrid.innerHTML = [
-    kpi("database", total, "Registros de gest\u00e3o"),
-    kpi("activity", emAndamento, "Demandas em andamento"),
-    kpi("file-search", licitacoes, "Itens de licita\u00e7\u00e3o"),
-    kpi("calendar-alert", semPrazo, "Itens sem prazo"),
+    kpi("database", total, "Registros de gest\u00e3o", "all"),
+    kpi("activity", emAndamento, "Demandas em andamento", "status:Em andamento"),
+    kpi("file-search", licitacoes, "Itens de licita\u00e7\u00e3o", "categoria:Licita\u00e7\u00f5es"),
+    kpi("calendar-alert", semPrazo, "Itens sem prazo", "missing:prazo"),
   ].join("");
 
   renderBars(elements.areaBars, countsBy(projetos, "area"));
@@ -258,6 +261,52 @@ function renderProjects() {
       </tr>
     `)
     .join("");
+}
+
+function applyDashboardShortcut(filter) {
+  resetProjectFilters();
+
+  if (filter === "all") {
+    state.filters.search = "";
+    elements.search.value = "";
+  } else if (filter.startsWith("status:")) {
+    setSelectFilter("status", elements.status, filter.slice("status:".length), "Todos");
+  } else if (filter.startsWith("area:")) {
+    setSelectFilter("area", elements.area, filter.slice("area:".length), "Todas");
+  } else if (filter.startsWith("categoria:")) {
+    setSelectFilter("categoria", elements.category, filter.slice("categoria:".length), "Todas");
+  } else if (filter === "missing:prazo") {
+    state.filters.search = "__sem_prazo__";
+    elements.search.value = "sem prazo";
+  } else if (filter === "missing:sei") {
+    state.filters.search = "__sem_sei__";
+    elements.search.value = "sem SEI";
+  } else if (filter === "missing:contrato") {
+    state.filters.search = "__sem_contrato__";
+    elements.search.value = "sem contrato";
+  } else if (filter === "has:contrato") {
+    state.filters.search = "__com_contrato__";
+    elements.search.value = "com contrato";
+  }
+
+  applyFilters();
+  switchView("projetos");
+}
+
+function resetProjectFilters() {
+  state.filters.search = "";
+  state.filters.categoria = "Todas";
+  state.filters.area = "Todas";
+  state.filters.status = "Todos";
+  elements.search.value = "";
+  elements.category.value = "Todas";
+  elements.area.value = "Todas";
+  elements.status.value = "Todos";
+}
+
+function setSelectFilter(key, select, value, fallback) {
+  state.filters[key] = [...select.options].some((option) => option.value === value) ? value : fallback;
+  select.value = state.filters[key];
 }
 
 function renderOperationalModules() {
@@ -602,11 +651,11 @@ function renderBars(target, counts) {
   target.innerHTML = counts
     .slice(0, 10)
     .map(([label, value]) => `
-      <div class="bar-row">
+      <button class="bar-row dashboard-action" type="button" data-dashboard-filter="area:${escapeHtml(label)}">
         <div class="bar-label">${escapeHtml(label || "N\u00e3o definido")}</div>
         <div class="bar-track"><div class="bar-fill" style="width: ${(value / max) * 100}%"></div></div>
         <div class="bar-value">${value}</div>
-      </div>
+      </button>
     `)
     .join("");
 }
@@ -615,10 +664,10 @@ function renderStatusList(counts) {
   elements.statusList.innerHTML = counts
     .slice(0, 8)
     .map(([label, value]) => `
-      <div class="status-row">
+      <button class="status-row dashboard-action" type="button" data-dashboard-filter="status:${escapeHtml(label)}">
         ${escapeHtml(label || "Sem status")}
         <span>${value}</span>
-      </div>
+      </button>
     `)
     .join("");
 }
@@ -627,20 +676,20 @@ function renderAlerts({ semPrazo, comSei, comContrato, total }) {
   const semSei = total - comSei;
   const semContrato = total - comContrato;
   elements.alertList.innerHTML = [
-    alertRow("Sem prazo definido", semPrazo, true),
-    alertRow("Sem processo SEI", semSei, true),
-    alertRow("Com contrato vinculado", comContrato, false),
-    alertRow("Sem contrato vinculado", semContrato, false),
+    alertRow("Sem prazo definido", semPrazo, true, "missing:prazo"),
+    alertRow("Sem processo SEI", semSei, true, "missing:sei"),
+    alertRow("Com contrato vinculado", comContrato, false, "has:contrato"),
+    alertRow("Sem contrato vinculado", semContrato, false, "missing:contrato"),
   ].join("");
 }
 
-function kpi(icon, value, label) {
+function kpi(icon, value, label, filter) {
   return `
-    <article class="kpi-card">
+    <button class="kpi-card dashboard-action" type="button" data-dashboard-filter="${escapeHtml(filter)}">
       <span data-lucide="${icon}"></span>
       <strong>${value}</strong>
       <p>${label}</p>
-    </article>
+    </button>
   `;
 }
 
@@ -653,12 +702,12 @@ function miniKpi(label, value) {
   `;
 }
 
-function alertRow(label, value, critical) {
+function alertRow(label, value, critical, filter) {
   return `
-    <div class="alert-row ${critical ? "critical" : ""}">
+    <button class="alert-row dashboard-action ${critical ? "critical" : ""}" type="button" data-dashboard-filter="${escapeHtml(filter)}">
       ${escapeHtml(label)}
       <span>${value}</span>
-    </div>
+    </button>
   `;
 }
 
@@ -688,6 +737,20 @@ function formatDate(value) {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return escapeHtml(value);
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
+}
+
+function isSpecialSearch(search) {
+  return search.startsWith("__") && search.endsWith("__");
+}
+
+function matchesSpecialSearch(item, search) {
+  const tests = {
+    "__sem_prazo__": !item.prazo,
+    "__sem_sei__": !item.sei,
+    "__sem_contrato__": !item.contrato,
+    "__com_contrato__": Boolean(item.contrato),
+  };
+  return Boolean(tests[search]);
 }
 
 function formatBytes(bytes) {

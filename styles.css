@@ -276,6 +276,7 @@ h2 {
 .kpi-card {
   min-height: 132px;
   padding: 16px;
+  text-align: left;
 }
 
 .kpi-card span {
@@ -339,6 +340,12 @@ h2 {
   grid-template-columns: 160px minmax(0, 1fr) 42px;
   gap: 10px;
   align-items: center;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
 }
 
 .bar-label,
@@ -371,10 +378,13 @@ h2 {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   padding: 11px 12px;
   background: #f8fafb;
   border: 1px solid var(--line);
   border-radius: 8px;
+  color: inherit;
+  text-align: left;
 }
 
 .status-row span,
@@ -385,6 +395,32 @@ h2 {
 
 .alert-row.critical span {
   color: var(--danger);
+}
+
+.dashboard-action {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.dashboard-action:hover {
+  border-color: rgba(20, 108, 99, 0.35);
+  box-shadow: 0 12px 30px rgba(23, 33, 47, 0.1);
+  transform: translateY(-1px);
+}
+
+.bar-row.dashboard-action:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.bar-row.dashboard-action:hover .bar-label,
+.status-row.dashboard-action:hover,
+.alert-row.dashboard-action:hover {
+  color: var(--primary);
+}
+
+.dashboard-action:focus-visible {
+  outline: 3px solid rgba(20, 108, 99, 0.28);
+  outline-offset: 2px;
 }
 
 .filters {
