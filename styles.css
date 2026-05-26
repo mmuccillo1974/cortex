@@ -28,6 +28,15 @@ body {
   letter-spacing: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 button,
 input,
 select,
@@ -272,6 +281,24 @@ h2 {
   color: var(--text);
   background: #ffffff;
   border-color: var(--line);
+}
+
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--danger);
+  background: #ffffff;
+  border: 1px solid #efc5c1;
+  border-radius: 8px;
+  font-weight: 750;
+}
+
+.danger-button:hover {
+  background: #feeceb;
 }
 
 .icon-button,
@@ -694,6 +721,10 @@ dialog::backdrop {
 
 .dialog-actions {
   margin-top: 16px;
+}
+
+.detail-actions {
+  justify-content: space-between;
 }
 
 .module-placeholder {

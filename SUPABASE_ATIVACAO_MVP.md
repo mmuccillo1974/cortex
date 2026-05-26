@@ -32,6 +32,24 @@ Depois de publicar esta nova versao do site no GitHub Pages:
 
 A partir desse momento, novos cadastros serao compartilhados entre computadores.
 
+## Editar e recarregar a planilha base
+
+Com a base ativa, o CORTEX oferece:
+
+- `Editar` e `Excluir` na ficha de cada registro;
+- `Importar planilha` na faixa verde do dashboard;
+- `Restaurar publicada`, que volta a importar a base incluída no site.
+
+Para atualizar muitos registros pela tabela:
+
+1. Edite o arquivo Excel original.
+2. Mantenha a aba com o nome `Projetos` e os cabecalhos atuais.
+3. No CORTEX online, clique em `Importar planilha`.
+4. Escolha o arquivo `.xlsx`.
+5. Confirme a substituicao da base importada.
+
+A importacao substitui apenas registros cuja origem e a planilha. Registros criados manualmente pelo site permanecem no banco.
+
 ## Seguranca desta etapa
 
 Este e um MVP com dados de teste. Para permitir uso sem login, as politicas SQL autorizam consulta e edicao publica dos registros.
@@ -42,4 +60,3 @@ Antes de armazenar informacoes reais ou institucionais, a proxima evolucao obrig
 - perfis de acesso;
 - politicas de seguranca restritas a usuarios autorizados;
 - trilha de auditoria.
-

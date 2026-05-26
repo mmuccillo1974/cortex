@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260525-edicao">
   </head>
   <body>
     <div class="app-shell">
@@ -83,6 +83,7 @@
             </div>
           </div>
           <div class="cloud-status-actions" id="cloud-actions"></div>
+          <input id="base-upload" class="sr-only" type="file" accept=".xlsx,.xls">
         </section>
 
         <section class="quick-command" aria-label="Busca e comando rápido">
@@ -189,7 +190,7 @@
         <div class="dialog-header">
           <div>
             <p class="eyebrow">Entrada unitária</p>
-            <h2>Novo registro</h2>
+            <h2 id="entry-dialog-title">Novo registro</h2>
           </div>
           <button class="icon-button" value="cancel" type="submit" title="Fechar">
             <span data-lucide="x"></span>
@@ -211,6 +212,10 @@
             <input id="entry-title" type="text" placeholder="Ex.: Renovação de contrato de link">
           </label>
           <label>
+            Categoria
+            <input id="entry-category" type="text" placeholder="Ex.: Licitações">
+          </label>
+          <label>
             Área
             <input id="entry-area" type="text" placeholder="Ex.: INFRA">
           </label>
@@ -227,6 +232,14 @@
             <input id="entry-sei" type="text" placeholder="Ex.: 33/000000/2026">
           </label>
           <label>
+            Contrato
+            <input id="entry-contract" type="text" placeholder="Ex.: CT 12/2026">
+          </label>
+          <label>
+            Valor anual
+            <input id="entry-value" type="number" min="0" step="0.01" placeholder="0,00">
+          </label>
+          <label>
             Arquivo
             <input id="entry-file" type="file">
           </label>
@@ -234,10 +247,14 @@
             Descrição
             <textarea id="entry-description" rows="4" placeholder="Registre a demanda, encaminhamento ou observação principal"></textarea>
           </label>
+          <label class="full">
+            Comentários
+            <textarea id="entry-comments" rows="3" placeholder="Observações e encaminhamentos"></textarea>
+          </label>
         </div>
         <div class="dialog-actions">
           <button class="ghost-button" value="cancel" type="submit">Cancelar</button>
-          <button class="primary-button" id="save-entry" value="default" type="submit">Salvar rascunho</button>
+          <button class="primary-button" id="save-entry" value="default" type="submit">Salvar</button>
         </div>
       </form>
     </dialog>
@@ -254,12 +271,14 @@
           </button>
         </div>
         <div class="detail-grid" id="detail-content"></div>
+        <div class="dialog-actions detail-actions" id="detail-actions"></div>
       </div>
     </dialog>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="data/projetos.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20260525-prazos"></script>
+    <script src="app.js?v=20260525-edicao"></script>
   </body>
 </html>

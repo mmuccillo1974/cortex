@@ -12,6 +12,8 @@ const state = {
     error: null,
     loading: true,
   },
+  editingKey: null,
+  detailKey: null,
   filters: {
     search: "",
     categoria: "Todas",
@@ -49,6 +51,7 @@ function cacheElements() {
   elements.cloudTitle = document.querySelector("#cloud-title");
   elements.cloudMessage = document.querySelector("#cloud-message");
   elements.cloudActions = document.querySelector("#cloud-actions");
+  elements.baseUpload = document.querySelector("#base-upload");
   elements.kpiGrid = document.querySelector("#kpi-grid");
   elements.areaBars = document.querySelector("#area-bars");
   elements.statusList = document.querySelector("#status-list");
@@ -64,19 +67,25 @@ function cacheElements() {
   elements.detailKind = document.querySelector("#detail-kind");
   elements.detailTitle = document.querySelector("#detail-title");
   elements.detailContent = document.querySelector("#detail-content");
+  elements.detailActions = document.querySelector("#detail-actions");
   elements.closeDetail = document.querySelector("#close-detail");
   elements.newEntry = document.querySelector("#new-entry-button");
   elements.saveEntry = document.querySelector("#save-entry");
   elements.export = document.querySelector("#export-button");
   elements.voice = document.querySelector("#voice-button");
   elements.entryType = document.querySelector("#entry-type");
+  elements.entryDialogTitle = document.querySelector("#entry-dialog-title");
   elements.entryTitle = document.querySelector("#entry-title");
+  elements.entryCategory = document.querySelector("#entry-category");
   elements.entryArea = document.querySelector("#entry-area");
   elements.entryStatus = document.querySelector("#entry-status");
   elements.entryDeadline = document.querySelector("#entry-deadline");
   elements.entrySei = document.querySelector("#entry-sei");
+  elements.entryContract = document.querySelector("#entry-contract");
+  elements.entryValue = document.querySelector("#entry-value");
   elements.entryFile = document.querySelector("#entry-file");
   elements.entryDescription = document.querySelector("#entry-description");
+  elements.entryComments = document.querySelector("#entry-comments");
 }
 
 function bindEvents() {
@@ -127,6 +136,7 @@ function bindEvents() {
   elements.export.addEventListener("click", exportData);
   elements.voice.addEventListener("click", handleVoiceInput);
   elements.closeDetail.addEventListener("click", () => elements.detailDialog.close());
+  elements.baseUpload.addEventListener("change", importSpreadsheet);
 
   document.addEventListener("click", (event) => {
     const detailButton = event.target.closest("[data-detail-key]");
@@ -138,6 +148,12 @@ function bindEvents() {
     const cloudAction = event.target.closest("[data-cloud-action]");
     if (cloudAction?.dataset.cloudAction === "seed") seedCloudData();
     if (cloudAction?.dataset.cloudAction === "refresh") refreshCloudData();
+    if (cloudAction?.dataset.cloudAction === "reload-base") reloadPublishedBase();
+    if (cloudAction?.dataset.cloudAction === "upload-base") elements.baseUpload.click();
+
+    const recordAction = event.target.closest("[data-record-action]");
+    if (recordAction?.dataset.recordAction === "edit") editRecord(recordAction.dataset.recordKey);
+    if (recordAction?.dataset.recordAction === "delete") deleteRecord(recordAction.dataset.recordKey);
   });
 }
 
@@ -253,13 +269,15 @@ function fromDatabaseRecord(item) {
     prazo: item.prazo,
     arquivo: item.arquivo,
     criadoEm: item.created_at,
+    externalId: item.external_id,
+    origem: item.origem,
   }, "nuvem");
 }
 
 function toDatabaseRecord(item) {
   const prazo = dateOnlyOrNull(item.prazo);
   return {
-    external_id: item.key || `${item.source || "web"}-${item.id}`,
+    external_id: item.externalId || item.key || `${item.source || "web"}-${item.id}`,
     tipo: item.tipo || inferType(item),
     ordem: item.ordem || null,
     projeto: item.projeto,
@@ -273,7 +291,7 @@ function toDatabaseRecord(item) {
     comentarios: importComments(item, prazo),
     prazo,
     arquivo: item.arquivo || null,
-    origem: item.source || "web",
+    origem: item.origem || item.source || "web",
   };
 }
 
@@ -348,7 +366,11 @@ function renderCloudStatus() {
     status.classList.add("ready");
     elements.cloudTitle.textContent = "Base compartilhada ativa";
     elements.cloudMessage.textContent = `${state.base.length} registros dispon\u00edveis na nuvem para acesso em qualquer local.`;
-    elements.cloudActions.innerHTML = `<button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Atualizar</button>`;
+    elements.cloudActions.innerHTML = `
+      <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar planilha</button>
+      <button class="ghost-button" type="button" data-cloud-action="reload-base"><span data-lucide="rotate-ccw"></span>Restaurar publicada</button>
+      <button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Atualizar</button>
+    `;
     return;
   }
 
@@ -395,6 +417,124 @@ async function seedCloudData() {
     state.cloud.error = error.message;
     renderCloudStatus();
     alert(`N\u00e3o foi poss\u00edvel importar a base: ${error.message}`);
+  }
+}
+
+async function reloadPublishedBase() {
+  const source = initialDataset();
+  if (!source.length) {
+    alert("A base publicada n\u00e3o foi encontrada.");
+    return;
+  }
+
+  const approved = confirm(
+    "Recarregar a base substituir\u00e1 no banco os registros originalmente importados da planilha. Registros criados pelo site ser\u00e3o preservados. Deseja continuar?"
+  );
+  if (!approved) return;
+
+  await replaceCloudBaseline(source, "Recarregando base publicada");
+}
+
+function initialDataset() {
+  return Array.isArray(window.CORTEX_PROJETOS)
+    ? window.CORTEX_PROJETOS.map((item) => normalizeRecord(item, "planilha"))
+    : [];
+}
+
+async function importSpreadsheet(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (!window.XLSX) {
+    alert("O componente de leitura de planilhas n\u00e3o carregou. Atualize a p\u00e1gina e tente novamente.");
+    return;
+  }
+
+  try {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+    const sheet = workbook.Sheets.Projetos;
+    if (!sheet) {
+      alert('A planilha precisa conter a aba "Projetos".');
+      return;
+    }
+
+    const source = spreadsheetRecords(sheet);
+    if (!source.length) {
+      alert("Nenhum registro foi encontrado na aba Projetos.");
+      return;
+    }
+
+    const approved = confirm(
+      `Importar ${source.length} registros da aba Projetos? A base anteriormente importada ser\u00e1 substitu\u00edda e cadastros manuais ser\u00e3o preservados.`
+    );
+    if (!approved) return;
+
+    await replaceCloudBaseline(source, "Importando planilha editada");
+  } catch (error) {
+    alert(`N\u00e3o foi poss\u00edvel ler a planilha: ${error.message}`);
+  }
+}
+
+function spreadsheetRecords(sheet) {
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: true });
+  return rows
+    .filter((row) => cellByHeader(row, "Projeto"))
+    .map((row, index) => normalizeRecord({
+      id: index + 1,
+      ordem: textValue(cellByHeader(row, "Ordem")) || String(index + 1).padStart(2, "0"),
+      projeto: textValue(cellByHeader(row, "Projeto")),
+      categoria: textValue(cellByHeader(row, "Categoria")),
+      valorAno: numberValue(cellByHeader(row, "Valor ano")),
+      sei: textValue(cellByHeader(row, "SEI")),
+      contrato: textValue(cellByHeader(row, "Contrato")),
+      descricao: textValue(cellByHeader(row, "Descri\u00e7\u00e3o")),
+      area: textValue(cellByHeader(row, "\u00c1rea")),
+      status: textValue(cellByHeader(row, "Status")),
+      comentarios: textValue(cellByHeader(row, "Coment\u00e1rios")),
+      prazo: sheetDateValue(cellByHeader(row, "Prazo")),
+    }, "planilha"));
+}
+
+function cellByHeader(row, wanted) {
+  const key = Object.keys(row).find((name) => norm(name) === norm(wanted));
+  return key ? row[key] : null;
+}
+
+function textValue(value) {
+  return value === null || value === undefined || value === "" ? null : String(value).trim();
+}
+
+function numberValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sheetDateValue(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  return textValue(value);
+}
+
+async function replaceCloudBaseline(source, title) {
+  elements.cloudTitle.textContent = title;
+  elements.cloudMessage.textContent = "Atualizando os registros de origem planilha.";
+  elements.cloudActions.innerHTML = "";
+
+  try {
+    await cloudRequest("/registros?origem=eq.planilha", {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+    await cloudRequest("/registros?on_conflict=external_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(source.map(toDatabaseRecord)),
+    });
+    await refreshCloudData();
+  } catch (error) {
+    state.cloud.error = error.message;
+    renderCloudStatus();
+    alert(`N\u00e3o foi poss\u00edvel atualizar a base: ${error.message}`);
   }
 }
 
@@ -648,14 +788,20 @@ function recordRow(item) {
 }
 
 function openEntryDialog(type = "projeto") {
+  state.editingKey = null;
+  elements.entryDialogTitle.textContent = "Novo registro";
   elements.entryType.value = moduleToType(type);
   elements.entryTitle.value = "";
+  elements.entryCategory.value = "";
   elements.entryArea.value = "";
   elements.entryStatus.value = "";
   elements.entryDeadline.value = "";
   elements.entrySei.value = "";
+  elements.entryContract.value = "";
+  elements.entryValue.value = "";
   elements.entryFile.value = "";
   elements.entryDescription.value = "";
+  elements.entryComments.value = "";
   elements.dialog.showModal();
 }
 
@@ -669,41 +815,56 @@ async function saveEntry(event) {
 
   const tipo = elements.entryType.value;
   const file = elements.entryFile.files?.[0] || null;
+  const existing = state.registros.find((item) => item.key === state.editingKey);
   const record = normalizeRecord({
-    id: createId(),
+    id: existing?.id || createId(),
     tipo,
-    ordem: "",
+    ordem: existing?.ordem || "",
     projeto: title,
-    categoria: defaultCategory(tipo),
-    valorAno: null,
+    categoria: elements.entryCategory.value.trim() || defaultCategory(tipo),
+    valorAno: elements.entryValue.value ? Number(elements.entryValue.value) : null,
     sei: elements.entrySei.value.trim() || null,
-    contrato: tipo === "contrato" ? title : null,
+    contrato: elements.entryContract.value.trim() || (tipo === "contrato" ? title : null),
     descricao: elements.entryDescription.value.trim() || null,
     area: elements.entryArea.value.trim() || null,
     status: elements.entryStatus.value.trim() || "Rascunho",
-    comentarios: state.cloud.available && !state.cloud.needsSeed ? "Criado no CORTEX online" : "Criado no prot\u00f3tipo local",
+    comentarios: elements.entryComments.value.trim() || (existing?.comentarios ?? (state.cloud.available && !state.cloud.needsSeed ? "Criado no CORTEX online" : "Criado no prot\u00f3tipo local")),
     prazo: elements.entryDeadline.value || null,
-    arquivo: file ? { nome: file.name, tamanho: file.size, tipo: file.type || "desconhecido" } : null,
-    criadoEm: new Date().toISOString(),
-  }, "local");
+    arquivo: file ? { nome: file.name, tamanho: file.size, tipo: file.type || "desconhecido" } : existing?.arquivo || null,
+    criadoEm: existing?.criadoEm || new Date().toISOString(),
+    externalId: existing?.externalId,
+    origem: existing?.origem,
+  }, existing?.source || "local");
 
   if (state.cloud.available && !state.cloud.needsSeed) {
     try {
-      const saved = await cloudRequest("/registros", {
-        method: "POST",
+      const method = existing?.source === "nuvem" ? "PATCH" : "POST";
+      const path = existing?.source === "nuvem" ? `/registros?id=eq.${encodeURIComponent(existing.id)}` : "/registros";
+      const saved = await cloudRequest(path, {
+        method,
         headers: { Prefer: "return=representation" },
         body: JSON.stringify(toDatabaseRecord(record)),
       });
-      state.base.push(fromDatabaseRecord(saved[0]));
+      const savedRecord = fromDatabaseRecord(saved[0]);
+      if (existing?.source === "nuvem") {
+        state.base = state.base.map((item) => item.id === existing.id ? savedRecord : item);
+      } else {
+        state.base.push(savedRecord);
+      }
     } catch (error) {
       alert(`N\u00e3o foi poss\u00edvel salvar na nuvem: ${error.message}`);
       return;
     }
   } else {
-    state.custom.push(record);
+    if (existing) {
+      state.custom = state.custom.map((item) => item.key === existing.key ? record : item);
+    } else {
+      state.custom.push(record);
+    }
     persistCustomRecords();
   }
 
+  state.editingKey = null;
   rebuildRecords();
   hydrateFilters();
   applyFilters();
@@ -715,6 +876,7 @@ function openDetail(key) {
   const record = state.registros.find((item) => item.key === key) || findVirtualRecord(key);
   if (!record) return;
 
+  state.detailKey = record.key;
   elements.detailKind.textContent = typeLabel(record.tipo);
   elements.detailTitle.textContent = record.projeto || "Registro";
   elements.detailContent.innerHTML = [
@@ -728,7 +890,68 @@ function openDetail(key) {
     detailItem("Descri\u00e7\u00e3o", record.descricao || "Sem descri\u00e7\u00e3o cadastrada", true),
     detailItem("Comentarios", record.comentarios || "Sem comentarios", true),
   ].join("");
+  elements.detailActions.innerHTML = canMutateRecord(record) ? `
+    <button class="danger-button" type="button" data-record-action="delete" data-record-key="${escapeHtml(record.key)}">
+      <span data-lucide="trash-2"></span>Excluir
+    </button>
+    <button class="primary-button" type="button" data-record-action="edit" data-record-key="${escapeHtml(record.key)}">
+      <span data-lucide="pencil"></span>Editar
+    </button>
+  ` : "";
   elements.detailDialog.showModal();
+  window.lucide?.createIcons();
+}
+
+function canMutateRecord(record) {
+  return record.tipo !== "area" && !record.key.startsWith("docref-");
+}
+
+function editRecord(key) {
+  const record = state.registros.find((item) => item.key === key);
+  if (!record) return;
+
+  state.editingKey = record.key;
+  elements.detailDialog.close();
+  elements.entryDialogTitle.textContent = "Editar registro";
+  elements.entryType.value = record.tipo || "projeto";
+  elements.entryTitle.value = record.projeto || "";
+  elements.entryCategory.value = record.categoria || "";
+  elements.entryArea.value = record.area || "";
+  elements.entryStatus.value = record.status || "";
+  elements.entryDeadline.value = dateOnlyOrNull(record.prazo) || "";
+  elements.entrySei.value = record.sei || "";
+  elements.entryContract.value = record.contrato || "";
+  elements.entryValue.value = record.valorAno || "";
+  elements.entryFile.value = "";
+  elements.entryDescription.value = record.descricao || "";
+  elements.entryComments.value = record.comentarios || "";
+  elements.dialog.showModal();
+}
+
+async function deleteRecord(key) {
+  const record = state.registros.find((item) => item.key === key);
+  if (!record || !canMutateRecord(record)) return;
+  if (!confirm(`Excluir o registro "${record.projeto}"? Esta a\u00e7\u00e3o n\u00e3o pode ser desfeita.`)) return;
+
+  try {
+    if (state.cloud.available && !state.cloud.needsSeed && record.source === "nuvem") {
+      await cloudRequest(`/registros?id=eq.${encodeURIComponent(record.id)}`, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      });
+      state.base = state.base.filter((item) => item.id !== record.id);
+    } else {
+      state.custom = state.custom.filter((item) => item.key !== record.key);
+      persistCustomRecords();
+    }
+    elements.detailDialog.close();
+    rebuildRecords();
+    hydrateFilters();
+    applyFilters();
+    renderCloudStatus();
+  } catch (error) {
+    alert(`N\u00e3o foi poss\u00edvel excluir o registro: ${error.message}`);
+  }
 }
 
 function findVirtualRecord(key) {
