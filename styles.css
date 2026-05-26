@@ -250,6 +250,17 @@ h2 {
   color: var(--text);
 }
 
+.quick-command .search-submit {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.quick-command .search-submit:hover {
+  color: var(--primary);
+  background: #eef7f5;
+}
+
 .view {
   display: none;
 }

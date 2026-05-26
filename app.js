@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function cacheElements() {
   elements.title = document.querySelector("#page-title");
   elements.search = document.querySelector("#global-search");
+  elements.searchButton = document.querySelector("#search-button");
   elements.clearSearch = document.querySelector("#clear-search");
   elements.kpiGrid = document.querySelector("#kpi-grid");
   elements.areaBars = document.querySelector("#area-bars");
@@ -78,10 +79,20 @@ function bindEvents() {
     applyFilters();
   });
 
+  elements.search.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runGlobalSearch();
+    }
+  });
+
+  elements.searchButton.addEventListener("click", runGlobalSearch);
+
   elements.clearSearch.addEventListener("click", () => {
     elements.search.value = "";
     state.filters.search = "";
     applyFilters();
+    if (state.view === "projetos") switchView("dashboard");
   });
 
   [["categoria", elements.category], ["area", elements.area], ["status", elements.status]].forEach(([key, select]) => {
@@ -207,6 +218,13 @@ function applyFilters() {
   renderProjects();
   renderOperationalModules();
   window.lucide?.createIcons();
+}
+
+function runGlobalSearch() {
+  state.filters.search = elements.search.value.trim().toLowerCase();
+  applyFilters();
+  switchView("projetos");
+  if (state.filters.search) elements.title.textContent = "Resultados da pesquisa";
 }
 
 function renderDashboard() {
