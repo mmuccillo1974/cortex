@@ -188,6 +188,60 @@ h2 {
   justify-content: flex-end;
 }
 
+.cloud-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 58px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  color: var(--text);
+  background: #eef7f5;
+  border: 1px solid #cfe5e0;
+  border-radius: 8px;
+}
+
+.cloud-status-copy,
+.cloud-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cloud-status-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cloud-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.cloud-status.ready .cloud-dot {
+  background: var(--success);
+}
+
+.cloud-status.pending {
+  background: #fff8ed;
+  border-color: #eddbbb;
+}
+
+.cloud-status.error {
+  background: #fff2f0;
+  border-color: #f1d0cc;
+}
+
+.cloud-status.error .cloud-dot {
+  background: var(--danger);
+}
+
 .primary-button,
 .ghost-button,
 .icon-button,
@@ -793,7 +847,8 @@ dialog::backdrop {
 
   .topbar,
   .topbar-actions,
-  .panel-header {
+  .panel-header,
+  .cloud-status {
     align-items: stretch;
     flex-direction: column;
   }

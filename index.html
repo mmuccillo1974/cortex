@@ -74,6 +74,17 @@
           </div>
         </header>
 
+        <section class="cloud-status" id="cloud-status" aria-live="polite">
+          <div class="cloud-status-copy">
+            <span class="cloud-dot" id="cloud-dot"></span>
+            <div>
+              <strong id="cloud-title">Verificando base na nuvem</strong>
+              <p id="cloud-message">Conectando ao armazenamento compartilhado.</p>
+            </div>
+          </div>
+          <div class="cloud-status-actions" id="cloud-actions"></div>
+        </section>
+
         <section class="quick-command" aria-label="Busca e comando rápido">
           <button class="search-submit" id="search-button" type="button" title="Pesquisar">
             <span data-lucide="search"></span>
@@ -248,6 +259,7 @@
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="data/projetos.js"></script>
+    <script src="supabase-config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

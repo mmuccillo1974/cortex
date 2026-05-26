@@ -6,6 +6,12 @@ const state = {
   registros: [],
   filtered: [],
   view: "dashboard",
+  cloud: {
+    available: false,
+    needsSeed: false,
+    error: null,
+    loading: true,
+  },
   filters: {
     search: "",
     categoria: "Todas",
@@ -39,6 +45,10 @@ function cacheElements() {
   elements.search = document.querySelector("#global-search");
   elements.searchButton = document.querySelector("#search-button");
   elements.clearSearch = document.querySelector("#clear-search");
+  elements.cloudStatus = document.querySelector("#cloud-status");
+  elements.cloudTitle = document.querySelector("#cloud-title");
+  elements.cloudMessage = document.querySelector("#cloud-message");
+  elements.cloudActions = document.querySelector("#cloud-actions");
   elements.kpiGrid = document.querySelector("#kpi-grid");
   elements.areaBars = document.querySelector("#area-bars");
   elements.statusList = document.querySelector("#status-list");
@@ -124,20 +134,28 @@ function bindEvents() {
 
     const dashboardLink = event.target.closest("[data-dashboard-filter]");
     if (dashboardLink) applyDashboardShortcut(dashboardLink.dataset.dashboardFilter);
+
+    const cloudAction = event.target.closest("[data-cloud-action]");
+    if (cloudAction?.dataset.cloudAction === "seed") seedCloudData();
+    if (cloudAction?.dataset.cloudAction === "refresh") refreshCloudData();
   });
 }
 
 async function loadData() {
+  let localBase;
   if (Array.isArray(window.CORTEX_PROJETOS)) {
-    state.base = window.CORTEX_PROJETOS.map((item) => normalizeRecord(item, "planilha"));
+    localBase = window.CORTEX_PROJETOS.map((item) => normalizeRecord(item, "planilha"));
   } else {
     const response = await fetch("data/projetos.json");
     const data = await response.json();
-    state.base = data.map((item) => normalizeRecord(item, "planilha"));
+    localBase = data.map((item) => normalizeRecord(item, "planilha"));
   }
 
+  state.base = localBase;
   state.custom = loadCustomRecords();
+  await connectCloudData();
   rebuildRecords();
+  renderCloudStatus();
 }
 
 function normalizeRecord(item, source) {
@@ -174,6 +192,88 @@ function loadCustomRecords() {
 
 function persistCustomRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.custom, null, 2));
+}
+
+async function connectCloudData() {
+  if (!hasCloudConfig()) {
+    state.cloud = { available: false, needsSeed: false, error: "Configura\u00e7\u00e3o n\u00e3o informada.", loading: false };
+    return;
+  }
+
+  try {
+    const records = await cloudRequest("/registros?select=*&order=created_at.asc");
+    state.cloud = { available: true, needsSeed: records.length === 0, error: null, loading: false };
+    if (records.length) {
+      state.base = records.map(fromDatabaseRecord);
+      state.custom = [];
+    }
+  } catch (error) {
+    state.cloud = { available: false, needsSeed: false, error: error.message, loading: false };
+  }
+}
+
+function hasCloudConfig() {
+  return Boolean(window.CORTEX_SUPABASE?.url && window.CORTEX_SUPABASE?.publishableKey);
+}
+
+async function cloudRequest(path, options = {}) {
+  const config = window.CORTEX_SUPABASE;
+  const response = await fetch(`${config.url}/rest/v1${path}`, {
+    ...options,
+    headers: {
+      apikey: config.publishableKey,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(response.status === 404 ? "Tabela ainda n\u00e3o criada." : `Falha de conex\u00e3o (${response.status}): ${body}`);
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : [];
+}
+
+function fromDatabaseRecord(item) {
+  return normalizeRecord({
+    id: item.id,
+    tipo: item.tipo,
+    ordem: item.ordem,
+    projeto: item.projeto,
+    categoria: item.categoria,
+    valorAno: item.valor_ano,
+    sei: item.sei,
+    contrato: item.contrato,
+    descricao: item.descricao,
+    area: item.area,
+    status: item.status,
+    comentarios: item.comentarios,
+    prazo: item.prazo,
+    arquivo: item.arquivo,
+    criadoEm: item.created_at,
+  }, "nuvem");
+}
+
+function toDatabaseRecord(item) {
+  return {
+    external_id: item.key || `${item.source || "web"}-${item.id}`,
+    tipo: item.tipo || inferType(item),
+    ordem: item.ordem || null,
+    projeto: item.projeto,
+    categoria: item.categoria || null,
+    valor_ano: item.valorAno || null,
+    sei: item.sei || null,
+    contrato: item.contrato || null,
+    descricao: item.descricao || null,
+    area: item.area || null,
+    status: item.status || null,
+    comentarios: item.comentarios || null,
+    prazo: item.prazo || null,
+    arquivo: item.arquivo || null,
+    origem: item.source || "web",
+  };
 }
 
 function hydrateFilters() {
@@ -225,6 +325,64 @@ function runGlobalSearch() {
   applyFilters();
   switchView("projetos");
   if (state.filters.search) elements.title.textContent = "Resultados da pesquisa";
+}
+
+function renderCloudStatus() {
+  const status = elements.cloudStatus;
+  status.classList.remove("ready", "pending", "error");
+
+  if (state.cloud.available && !state.cloud.needsSeed) {
+    status.classList.add("ready");
+    elements.cloudTitle.textContent = "Base compartilhada ativa";
+    elements.cloudMessage.textContent = `${state.base.length} registros dispon\u00edveis na nuvem para acesso em qualquer local.`;
+    elements.cloudActions.innerHTML = `<button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Atualizar</button>`;
+    return;
+  }
+
+  if (state.cloud.available && state.cloud.needsSeed) {
+    status.classList.add("pending");
+    elements.cloudTitle.textContent = "Banco conectado, sem dados";
+    elements.cloudMessage.textContent = "Envie a base inicial para disponibilizar os registros na nuvem.";
+    elements.cloudActions.innerHTML = `<button class="primary-button" type="button" data-cloud-action="seed"><span data-lucide="cloud-upload"></span>Enviar base inicial</button>`;
+    return;
+  }
+
+  status.classList.add("error");
+  elements.cloudTitle.textContent = "Base local em uso";
+  elements.cloudMessage.textContent = `${state.cloud.error || "Nuvem ainda n\u00e3o configurada."} Execute o script SQL no Supabase.`;
+  elements.cloudActions.innerHTML = `<button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Tentar novamente</button>`;
+}
+
+async function refreshCloudData() {
+  elements.cloudTitle.textContent = "Atualizando base compartilhada";
+  elements.cloudMessage.textContent = "Consultando registros no Supabase.";
+  await connectCloudData();
+  rebuildRecords();
+  hydrateFilters();
+  applyFilters();
+  renderCloudStatus();
+  window.lucide?.createIcons();
+}
+
+async function seedCloudData() {
+  const records = [...state.base, ...state.custom].map(toDatabaseRecord);
+  elements.cloudTitle.textContent = "Enviando base inicial";
+  elements.cloudMessage.textContent = "Aguarde enquanto os registros s\u00e3o gravados na nuvem.";
+  elements.cloudActions.innerHTML = "";
+
+  try {
+    await cloudRequest("/registros?on_conflict=external_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify(records),
+    });
+    localStorage.removeItem(STORAGE_KEY);
+    await refreshCloudData();
+  } catch (error) {
+    state.cloud.error = error.message;
+    renderCloudStatus();
+    alert(`N\u00e3o foi poss\u00edvel importar a base: ${error.message}`);
+  }
 }
 
 function renderDashboard() {
@@ -488,7 +646,7 @@ function openEntryDialog(type = "projeto") {
   elements.dialog.showModal();
 }
 
-function saveEntry(event) {
+async function saveEntry(event) {
   event.preventDefault();
   const title = elements.entryTitle.value.trim();
   if (!title) {
@@ -510,17 +668,33 @@ function saveEntry(event) {
     descricao: elements.entryDescription.value.trim() || null,
     area: elements.entryArea.value.trim() || null,
     status: elements.entryStatus.value.trim() || "Rascunho",
-    comentarios: "Criado no prototipo local",
+    comentarios: state.cloud.available && !state.cloud.needsSeed ? "Criado no CORTEX online" : "Criado no prot\u00f3tipo local",
     prazo: elements.entryDeadline.value || null,
     arquivo: file ? { nome: file.name, tamanho: file.size, tipo: file.type || "desconhecido" } : null,
     criadoEm: new Date().toISOString(),
   }, "local");
 
-  state.custom.push(record);
-  persistCustomRecords();
+  if (state.cloud.available && !state.cloud.needsSeed) {
+    try {
+      const saved = await cloudRequest("/registros", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(toDatabaseRecord(record)),
+      });
+      state.base.push(fromDatabaseRecord(saved[0]));
+    } catch (error) {
+      alert(`N\u00e3o foi poss\u00edvel salvar na nuvem: ${error.message}`);
+      return;
+    }
+  } else {
+    state.custom.push(record);
+    persistCustomRecords();
+  }
+
   rebuildRecords();
   hydrateFilters();
   applyFilters();
+  renderCloudStatus();
   elements.dialog.close();
 }
 
@@ -560,15 +734,15 @@ function findVirtualRecord(key) {
 function exportData() {
   const payload = {
     exportadoEm: new Date().toISOString(),
-    registrosLocais: state.custom,
-    totalPlanilha: state.base.length,
+    origem: state.cloud.available && !state.cloud.needsSeed ? "supabase" : "local",
+    registros: state.registros,
     totalRegistros: state.registros.length,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "cortex-registros-locais.json";
+  link.download = "cortex-registros.json";
   link.click();
   URL.revokeObjectURL(url);
 }
