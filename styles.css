@@ -274,9 +274,22 @@ h2 {
 }
 
 .kpi-card {
+  position: relative;
+  overflow: hidden;
   min-height: 132px;
   padding: 16px;
+  color: var(--text);
   text-align: left;
+}
+
+.kpi-card::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--kpi-tone);
+  content: "";
 }
 
 .kpi-card span {
@@ -286,8 +299,8 @@ h2 {
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
-  color: var(--primary);
-  background: #e2f2ef;
+  color: var(--kpi-tone);
+  background: var(--kpi-soft);
   border-radius: 8px;
 }
 
@@ -300,6 +313,30 @@ h2 {
 .kpi-card p {
   margin: 8px 0 0;
   color: var(--muted);
+}
+
+.kpi-records {
+  --kpi-tone: #146c63;
+  --kpi-soft: #e2f2ef;
+  --kpi-shadow: rgba(20, 108, 99, 0.2);
+}
+
+.kpi-progress {
+  --kpi-tone: #245c9f;
+  --kpi-soft: #e6eef9;
+  --kpi-shadow: rgba(36, 92, 159, 0.2);
+}
+
+.kpi-bidding {
+  --kpi-tone: #b56b12;
+  --kpi-soft: #fff0dc;
+  --kpi-shadow: rgba(181, 107, 18, 0.2);
+}
+
+.kpi-deadline {
+  --kpi-tone: #bd3328;
+  --kpi-soft: #fce7e5;
+  --kpi-shadow: rgba(189, 51, 40, 0.2);
 }
 
 .content-grid {
@@ -398,18 +435,28 @@ h2 {
 }
 
 .dashboard-action {
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  transform-origin: center;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 
 .dashboard-action:hover {
   border-color: rgba(20, 108, 99, 0.35);
-  box-shadow: 0 12px 30px rgba(23, 33, 47, 0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 15px 34px rgba(23, 33, 47, 0.14);
+  transform: translateY(-2px) scale(1.018);
+}
+
+.kpi-card.dashboard-action:hover {
+  border-color: var(--kpi-tone);
+  box-shadow: 0 18px 34px var(--kpi-shadow);
+}
+
+.kpi-card.dashboard-action:active {
+  transform: translateY(0) scale(1.006);
 }
 
 .bar-row.dashboard-action:hover {
   box-shadow: none;
-  transform: none;
+  transform: translateX(4px) scale(1.004);
 }
 
 .bar-row.dashboard-action:hover .bar-label,
@@ -421,6 +468,11 @@ h2 {
 .dashboard-action:focus-visible {
   outline: 3px solid rgba(20, 108, 99, 0.28);
   outline-offset: 2px;
+}
+
+.status-row.dashboard-action:hover,
+.alert-row.dashboard-action:hover {
+  background: #eef7f5;
 }
 
 .filters {

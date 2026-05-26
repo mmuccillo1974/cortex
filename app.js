@@ -219,10 +219,10 @@ function renderDashboard() {
   const comContrato = contratoRecords().length;
 
   elements.kpiGrid.innerHTML = [
-    kpi("database", total, "Registros de gest\u00e3o", "all"),
-    kpi("activity", emAndamento, "Demandas em andamento", "status:Em andamento"),
-    kpi("file-search", licitacoes, "Itens de licita\u00e7\u00e3o", "categoria:Licita\u00e7\u00f5es"),
-    kpi("calendar-alert", semPrazo, "Itens sem prazo", "missing:prazo"),
+    kpi("database", total, "Registros de gest\u00e3o", "all", "records"),
+    kpi("activity", emAndamento, "Demandas em andamento", "status:Em andamento", "progress"),
+    kpi("file-search", licitacoes, "Itens de licita\u00e7\u00e3o", "categoria:Licita\u00e7\u00f5es", "bidding"),
+    kpi("calendar-alert", semPrazo, "Itens sem prazo", "missing:prazo", "deadline"),
   ].join("");
 
   renderBars(elements.areaBars, countsBy(projetos, "area"));
@@ -683,9 +683,9 @@ function renderAlerts({ semPrazo, comSei, comContrato, total }) {
   ].join("");
 }
 
-function kpi(icon, value, label, filter) {
+function kpi(icon, value, label, filter, tone) {
   return `
-    <button class="kpi-card dashboard-action" type="button" data-dashboard-filter="${escapeHtml(filter)}">
+    <button class="kpi-card kpi-${escapeHtml(tone)} dashboard-action" type="button" data-dashboard-filter="${escapeHtml(filter)}">
       <span data-lucide="${icon}"></span>
       <strong>${value}</strong>
       <p>${label}</p>
