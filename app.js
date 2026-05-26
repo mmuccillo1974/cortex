@@ -257,6 +257,7 @@ function fromDatabaseRecord(item) {
 }
 
 function toDatabaseRecord(item) {
+  const prazo = dateOnlyOrNull(item.prazo);
   return {
     external_id: item.key || `${item.source || "web"}-${item.id}`,
     tipo: item.tipo || inferType(item),
@@ -269,11 +270,23 @@ function toDatabaseRecord(item) {
     descricao: item.descricao || null,
     area: item.area || null,
     status: item.status || null,
-    comentarios: item.comentarios || null,
-    prazo: item.prazo || null,
+    comentarios: importComments(item, prazo),
+    prazo,
     arquivo: item.arquivo || null,
     origem: item.source || "web",
   };
+}
+
+function dateOnlyOrNull(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? value : null;
+}
+
+function importComments(item, prazo) {
+  const original = String(item.prazo || "").trim();
+  if (!original || prazo) return item.comentarios || null;
+
+  const note = `Prazo informado na origem: ${original}`;
+  return item.comentarios ? `${item.comentarios} | ${note}` : note;
 }
 
 function hydrateFilters() {
