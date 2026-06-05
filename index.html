@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260525-edicao">
+    <link rel="stylesheet" href="styles.css?v=20260605-importacao-csv">
   </head>
   <body>
     <div class="app-shell">
@@ -32,6 +32,10 @@
           <button class="nav-item" data-view="licitacoes" type="button">
             <span data-lucide="file-search"></span>
             Licitações
+          </button>
+          <button class="nav-item" data-view="tarefas" type="button">
+            <span data-lucide="list-checks"></span>
+            Tarefas
           </button>
           <button class="nav-item" data-view="contratos" type="button">
             <span data-lucide="file-signature"></span>
@@ -83,7 +87,7 @@
             </div>
           </div>
           <div class="cloud-status-actions" id="cloud-actions"></div>
-          <input id="base-upload" class="sr-only" type="file" accept=".xlsx,.xls">
+          <input id="base-upload" class="sr-only" type="file" accept=".xlsx,.xls,.csv,.json" multiple>
         </section>
 
         <section class="quick-command" aria-label="Busca e comando rápido">
@@ -179,6 +183,7 @@
         </section>
 
         <section class="view" id="view-licitacoes"></section>
+        <section class="view" id="view-tarefas"></section>
         <section class="view" id="view-contratos"></section>
         <section class="view" id="view-pessoas"></section>
         <section class="view" id="view-documentos"></section>
@@ -202,6 +207,7 @@
             <select id="entry-type">
               <option value="projeto">Projeto/demanda</option>
               <option value="licitacao">Licitação</option>
+              <option value="tarefa">Tarefa</option>
               <option value="contrato">Contrato</option>
               <option value="pessoa">Pessoa</option>
               <option value="documento">Documento</option>
@@ -279,6 +285,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="data/projetos.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20260525-edicao"></script>
+    <script src="app.js?v=20260605-importacao-csv"></script>
   </body>
 </html>

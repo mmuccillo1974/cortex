@@ -18,10 +18,14 @@ create table if not exists public.registros (
   comentarios text,
   prazo date,
   arquivo jsonb,
+  detalhes jsonb not null default '{}'::jsonb,
   origem text not null default 'web',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.registros
+add column if not exists detalhes jsonb not null default '{}'::jsonb;
 
 create or replace function public.atualizar_updated_at()
 returns trigger
