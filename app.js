@@ -1,4 +1,5 @@
 const STORAGE_KEY = "cortex.registros.v1";
+const IMPORT_STORAGE_KEY = "cortex.importacao.v1";
 
 const state = {
   base: [],
@@ -26,6 +27,7 @@ const moduleTitles = {
   dashboard: "Dashboard executivo",
   projetos: "Projetos e demandas",
   licitacoes: "Licita\u00e7\u00f5es",
+  tarefas: "Tarefas e prazos",
   contratos: "Contratos",
   pessoas: "Pessoas e equipes",
   documentos: "Documentos",
@@ -69,6 +71,10 @@ function cacheElements() {
   elements.detailContent = document.querySelector("#detail-content");
   elements.detailActions = document.querySelector("#detail-actions");
   elements.closeDetail = document.querySelector("#close-detail");
+  elements.importHelpDialog = document.querySelector("#import-help-dialog");
+  elements.closeImportHelp = document.querySelector("#close-import-help");
+  elements.copySupabaseSql = document.querySelector("#copy-supabase-sql");
+  elements.copySupabaseSqlStatus = document.querySelector("#copy-supabase-sql-status");
   elements.newEntry = document.querySelector("#new-entry-button");
   elements.saveEntry = document.querySelector("#save-entry");
   elements.export = document.querySelector("#export-button");
@@ -136,6 +142,8 @@ function bindEvents() {
   elements.export.addEventListener("click", exportData);
   elements.voice.addEventListener("click", handleVoiceInput);
   elements.closeDetail.addEventListener("click", () => elements.detailDialog.close());
+  elements.closeImportHelp.addEventListener("click", () => elements.importHelpDialog.close());
+  elements.copySupabaseSql.addEventListener("click", copySupabaseSql);
   elements.baseUpload.addEventListener("change", importSpreadsheet);
 
   document.addEventListener("click", (event) => {
@@ -150,11 +158,33 @@ function bindEvents() {
     if (cloudAction?.dataset.cloudAction === "refresh") refreshCloudData();
     if (cloudAction?.dataset.cloudAction === "reload-base") reloadPublishedBase();
     if (cloudAction?.dataset.cloudAction === "upload-base") elements.baseUpload.click();
+    if (cloudAction?.dataset.cloudAction === "import-help") elements.importHelpDialog.showModal();
 
     const recordAction = event.target.closest("[data-record-action]");
     if (recordAction?.dataset.recordAction === "edit") editRecord(recordAction.dataset.recordKey);
     if (recordAction?.dataset.recordAction === "delete") deleteRecord(recordAction.dataset.recordKey);
   });
+}
+
+async function copySupabaseSql() {
+  elements.copySupabaseSqlStatus.textContent = "Carregando SQL...";
+
+  try {
+    const response = await fetch("supabase/01_criar_banco_mvp.sql");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const sql = await response.text();
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(sql);
+      elements.copySupabaseSqlStatus.textContent = "SQL copiado. Cole no Supabase e clique em Run.";
+      return;
+    }
+
+    window.prompt("Copie este SQL e cole no Supabase SQL Editor:", sql);
+    elements.copySupabaseSqlStatus.textContent = "Copie o SQL exibido e cole no Supabase.";
+  } catch (error) {
+    elements.copySupabaseSqlStatus.textContent = "Não consegui copiar. Clique em Abrir SQL e copie manualmente.";
+  }
 }
 
 async function loadData() {
@@ -167,7 +197,7 @@ async function loadData() {
     localBase = data.map((item) => normalizeRecord(item, "planilha"));
   }
 
-  state.base = localBase;
+  state.base = loadImportedBaseline() || localBase;
   state.custom = loadCustomRecords();
   await connectCloudData();
   rebuildRecords();
@@ -208,6 +238,29 @@ function loadCustomRecords() {
 
 function persistCustomRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.custom, null, 2));
+}
+
+function loadImportedBaseline() {
+  try {
+    const raw = localStorage.getItem(IMPORT_STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    return Array.isArray(data) ? data.map((item) => normalizeRecord(item, "planilha")) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistImportedBaseline(records) {
+  localStorage.setItem(IMPORT_STORAGE_KEY, JSON.stringify(records.map(serializableRecord), null, 2));
+}
+
+function clearImportedBaseline() {
+  localStorage.removeItem(IMPORT_STORAGE_KEY);
+}
+
+function serializableRecord(record) {
+  const { key, source, ...rest } = record;
+  return rest;
 }
 
 async function connectCloudData() {
@@ -268,6 +321,7 @@ function fromDatabaseRecord(item) {
     comentarios: item.comentarios,
     prazo: item.prazo,
     arquivo: item.arquivo,
+    detalhes: item.detalhes || {},
     criadoEm: item.created_at,
     externalId: item.external_id,
     origem: item.origem,
@@ -291,6 +345,7 @@ function toDatabaseRecord(item) {
     comentarios: importComments(item, prazo),
     prazo,
     arquivo: item.arquivo || null,
+    detalhes: item.detalhes || {},
     origem: item.origem || item.source || "web",
   };
 }
@@ -340,6 +395,7 @@ function applyFilters() {
       item.contrato,
       item.descricao,
       item.comentarios,
+      ...Object.values(item.detalhes || {}),
     ].join(" ").toLowerCase();
     const matchesSearch = matchesSpecialSearch(item, search) || (!isSpecialSearch(search) && (!search || haystack.includes(search)));
     return matchesCategory && matchesArea && matchesStatus && matchesSearch;
@@ -367,7 +423,8 @@ function renderCloudStatus() {
     elements.cloudTitle.textContent = "Base compartilhada ativa";
     elements.cloudMessage.textContent = `${state.base.length} registros dispon\u00edveis na nuvem para acesso em qualquer local.`;
     elements.cloudActions.innerHTML = `
-      <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar planilha</button>
+      <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV/planilha</button>
+      <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
       <button class="ghost-button" type="button" data-cloud-action="reload-base"><span data-lucide="rotate-ccw"></span>Restaurar publicada</button>
       <button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Atualizar</button>
     `;
@@ -378,14 +435,22 @@ function renderCloudStatus() {
     status.classList.add("pending");
     elements.cloudTitle.textContent = "Banco conectado, sem dados";
     elements.cloudMessage.textContent = "Envie a base inicial para disponibilizar os registros na nuvem.";
-    elements.cloudActions.innerHTML = `<button class="primary-button" type="button" data-cloud-action="seed"><span data-lucide="cloud-upload"></span>Enviar base inicial</button>`;
+    elements.cloudActions.innerHTML = `
+      <button class="primary-button" type="button" data-cloud-action="seed"><span data-lucide="cloud-upload"></span>Enviar base inicial</button>
+      <button class="ghost-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV/planilha</button>
+      <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
+    `;
     return;
   }
 
   status.classList.add("error");
   elements.cloudTitle.textContent = "Base local em uso";
   elements.cloudMessage.textContent = `${state.cloud.error || "Nuvem ainda n\u00e3o configurada."} Execute o script SQL no Supabase.`;
-  elements.cloudActions.innerHTML = `<button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Tentar novamente</button>`;
+  elements.cloudActions.innerHTML = `
+    <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV local</button>
+    <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
+    <button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Tentar novamente</button>
+  `;
 }
 
 async function refreshCloudData() {
@@ -412,6 +477,7 @@ async function seedCloudData() {
       body: JSON.stringify(records),
     });
     localStorage.removeItem(STORAGE_KEY);
+    clearImportedBaseline();
     await refreshCloudData();
   } catch (error) {
     state.cloud.error = error.message;
@@ -432,6 +498,7 @@ async function reloadPublishedBase() {
   );
   if (!approved) return;
 
+  clearImportedBaseline();
   await replaceCloudBaseline(source, "Recarregando base publicada");
 }
 
@@ -441,63 +508,349 @@ function initialDataset() {
     : [];
 }
 
+const IMPORT_SHEETS = {
+  projetos: {
+    tipo: "projeto",
+    required: ["Projeto"],
+    title: ["Projeto", "Nome do Projeto", "Titulo", "Título"],
+    id: ["ID", "ID Projeto", "Ordem"],
+    description: ["Descrição do Projeto", "Descricao do Projeto", "Descrição", "Descricao"],
+    category: ["Categoria"],
+    value: ["Valor Anual Estimado", "Valor ano", "Valor Anual", "Valor Estimado"],
+    sei: ["Processo SEI", "SEI"],
+    contract: ["Contrato/Instrumento", "Contrato", "Instrumento"],
+    area: ["Segmento STI Responsável", "Segmento STI Responsavel", "Área", "Area", "Área Responsável"],
+    status: ["Fase / Status Atual", "Status", "Fase", "Status Atual"],
+    comments: ["Observações", "Observacoes", "Comentários", "Comentarios"],
+    deadline: ["Prazo Previsto", "Prazo", "Data de Conclusão Prevista", "Data de Conclusao Prevista"],
+  },
+  contratos: {
+    tipo: "contrato",
+    required: ["Número do Contrato", "Contrato", "Contrato/Instrumento", "Objeto do Contrato"],
+    title: ["Número do Contrato", "Numero do Contrato", "Contrato", "Contrato/Instrumento", "Objeto do Contrato"],
+    id: ["ID Contrato", "ID", "Número do Contrato", "Numero do Contrato"],
+    description: ["Objeto do Contrato", "Objeto", "Descrição", "Descricao"],
+    category: ["Tipo de Instrumento", "Categoria"],
+    value: ["Valor Anual", "Valor Anual Estimado", "Valor Total Contratado", "Valor Contratado"],
+    sei: ["Processo SEI", "SEI"],
+    contract: ["Número do Contrato", "Numero do Contrato", "Contrato", "Contrato/Instrumento"],
+    area: ["Segmento STI Responsável", "Segmento STI Responsavel", "Área Demandante", "Área Responsável", "Area"],
+    status: ["Status do Contrato", "Status", "Situação", "Situacao"],
+    comments: ["Observações Contratuais", "Observações", "Observacoes", "Comentários", "Comentarios"],
+    deadline: ["Data de Vencimento", "Vencimento", "Fim da Vigência", "Fim da Vigencia", "Prazo"],
+  },
+  tarefas: {
+    tipo: "tarefa",
+    required: ["Título da Tarefa", "Titulo da Tarefa", "Tarefa"],
+    title: ["Título da Tarefa", "Titulo da Tarefa", "Tarefa"],
+    id: ["ID Tarefa", "ID"],
+    description: ["Descrição da Tarefa", "Descricao da Tarefa", "Descrição", "Descricao"],
+    category: ["Tipo de Entrega", "Categoria"],
+    sei: ["Processo SEI", "SEI"],
+    contract: ["Contrato", "Contrato/Instrumento"],
+    area: ["Área Responsável", "Area Responsavel", "Segmento STI Responsável", "Segmento STI Responsavel", "Área", "Area"],
+    status: ["Status da Tarefa", "Status"],
+    comments: ["Observações", "Observacoes", "Comentários", "Comentarios", "Bloqueador"],
+    deadline: ["Prazo Previsto", "Prazo", "Data Limite"],
+  },
+  licitacoes: {
+    tipo: "licitacao",
+    required: ["Objeto", "Objeto da Contratação", "Objeto da Contratacao", "Projeto"],
+    title: ["Objeto da Contratação", "Objeto da Contratacao", "Objeto", "Projeto"],
+    id: ["ID Licitação", "ID Licitacao", "ID"],
+    description: ["Objeto da Contratação", "Objeto da Contratacao", "Descrição", "Descricao"],
+    category: ["Categoria", "Tipo de Aquisição", "Tipo de Aquisicao"],
+    value: ["Valor Estimado", "Valor Anual Estimado", "Valor Anual"],
+    sei: ["Processo SEI", "SEI"],
+    contract: ["Contrato Atual Vinculado", "Contrato"],
+    area: ["Segmento STI Responsável", "Segmento STI Responsavel", "Área Demandante", "Area Demandante"],
+    status: ["Fase da Licitação", "Fase da Licitacao", "Fase / Status Atual", "Status"],
+    comments: ["Pendência Atual", "Pendencia Atual", "Observações", "Observacoes"],
+    deadline: ["Data Limite para Contratar", "Prazo Previsto", "Prazo"],
+  },
+  pessoas: {
+    tipo: "pessoa",
+    required: ["Nome Completo", "Nome"],
+    title: ["Nome Completo", "Nome", "Nome Usual"],
+    id: ["ID Pessoa", "ID", "E-mail", "Email"],
+    description: ["Cargo / Função", "Cargo / Funcao", "Papel na STI", "Função", "Funcao"],
+    category: ["Vínculo", "Vinculo", "Categoria"],
+    area: ["Segmento STI", "Área", "Area"],
+    status: ["Status"],
+    comments: ["Observações Gerais", "Observações", "Observacoes"],
+    deadline: ["Data de Revisão", "Data de Revisao"],
+  },
+  skills: {
+    tipo: "pessoa",
+    categoria: "Skill",
+    required: ["ID Pessoa", "Nome", "Skill"],
+    title: ["Skill"],
+    id: ["ID Skill", "ID"],
+    description: ["Evidência", "Evidencia", "Observações", "Observacoes"],
+    category: ["Tipo de Skill"],
+    area: ["Segmento STI", "Área", "Area"],
+    status: ["Nível", "Nivel"],
+    comments: ["Observações", "Observacoes", "Evidência", "Evidencia"],
+    deadline: ["Data da Avaliação", "Data da Avaliacao"],
+  },
+  avaliacoes: {
+    tipo: "pessoa",
+    categoria: "Avaliação",
+    required: ["ID Pessoa", "Nome", "Período Avaliado", "Periodo Avaliado"],
+    title: ["Período Avaliado", "Periodo Avaliado", "Nome"],
+    id: ["ID Avaliação", "ID Avaliacao", "ID"],
+    description: ["Pontos Fortes", "Plano de Ação", "Plano de Acao"],
+    category: ["Classificação Geral", "Classificacao Geral"],
+    status: ["Classificação Geral", "Classificacao Geral", "Status"],
+    comments: ["Pontos de Desenvolvimento", "Plano de Ação", "Plano de Acao", "Observações", "Observacoes"],
+    deadline: ["Data de Revisão", "Data de Revisao", "Data da Avaliação", "Data da Avaliacao"],
+  },
+  alocacoes: {
+    tipo: "pessoa",
+    categoria: "Alocação",
+    required: ["ID Pessoa", "Nome", "ID Projeto", "Projeto"],
+    title: ["Projeto", "ID Projeto"],
+    id: ["ID Alocação", "ID Alocacao", "ID"],
+    description: ["Papel no Projeto", "Observações", "Observacoes"],
+    category: ["Papel no Projeto"],
+    status: ["Status da Alocação", "Status da Alocacao", "Status"],
+    comments: ["Observações", "Observacoes"],
+    deadline: ["Data de Fim", "Data de Fim Prevista"],
+  },
+  ausencias: {
+    tipo: "pessoa",
+    categoria: "Ausência",
+    required: ["ID Pessoa", "Nome", "Tipo de Ausência", "Tipo de Ausencia"],
+    title: ["Tipo de Ausência", "Tipo de Ausencia", "Nome"],
+    id: ["ID Ausência", "ID Ausencia", "ID"],
+    description: ["Observações", "Observacoes"],
+    category: ["Tipo de Ausência", "Tipo de Ausencia"],
+    status: ["Status"],
+    comments: ["Observações", "Observacoes"],
+    deadline: ["Data de Fim"],
+  },
+  remuneracao: {
+    tipo: "pessoa",
+    categoria: "Remuneração",
+    required: ["ID Pessoa", "Nome", "Competência", "Competencia"],
+    title: ["Competência", "Competencia", "Nome"],
+    id: ["ID Remuneração", "ID Remuneracao", "ID"],
+    description: ["Fonte da Informação", "Fonte da Informacao", "Observações Remuneratórias", "Observacoes Remuneratorias"],
+    value: ["Custo Total Estimado", "Salário Base", "Salario Base"],
+    category: ["Categoria"],
+    status: ["Competência", "Competencia"],
+    comments: ["Observações Remuneratórias", "Observacoes Remuneratorias"],
+  },
+};
+
 async function importSpreadsheet(event) {
-  const file = event.target.files?.[0];
+  const files = [...(event.target.files || [])];
   event.target.value = "";
-  if (!file) return;
-  if (!window.XLSX) {
-    alert("O componente de leitura de planilhas n\u00e3o carregou. Atualize a p\u00e1gina e tente novamente.");
-    return;
-  }
+  if (!files.length) return;
 
   try {
-    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-    const sheet = workbook.Sheets.Projetos;
-    if (!sheet) {
-      alert('A planilha precisa conter a aba "Projetos".');
-      return;
-    }
-
-    const source = spreadsheetRecords(sheet);
+    const source = (await Promise.all(files.map(importFileRecords))).flat();
     if (!source.length) {
-      alert("Nenhum registro foi encontrado na aba Projetos.");
+      alert("Nenhum registro foi encontrado. Para CSV, use nomes como Projetos.csv, Contratos.csv, Tarefas.csv ou Pessoas.csv.");
       return;
     }
 
+    const summary = countsBy(source, "tipo").map(([tipo, total]) => `${typeLabel(tipo)}: ${total}`).join(" | ");
     const approved = confirm(
-      `Importar ${source.length} registros da aba Projetos? A base anteriormente importada ser\u00e1 substitu\u00edda e cadastros manuais ser\u00e3o preservados.`
+      `Importar ${source.length} registros (${summary})? A base anteriormente importada será substituída e cadastros manuais serão preservados.`
     );
     if (!approved) return;
 
-    await replaceCloudBaseline(source, "Importando planilha editada");
+    await replaceCloudBaseline(source, "Importando arquivo CORTEX");
   } catch (error) {
-    alert(`N\u00e3o foi poss\u00edvel ler a planilha: ${error.message}`);
+    alert(`Não foi possível ler o arquivo: ${error.message}`);
   }
+}
+
+async function importFileRecords(file) {
+  const extension = file.name.split(".").pop().toLowerCase();
+  if (["xlsx", "xls"].includes(extension)) {
+    if (!window.XLSX) throw new Error("O componente de leitura de planilhas não carregou. Atualize a página e tente novamente.");
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+    return workbook.SheetNames.flatMap((sheetName) => {
+      const key = importKeyFromName(sheetName);
+      if (!key) return [];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null, raw: true });
+      return recordsFromRows(rows, key, sheetName);
+    });
+  }
+
+  const text = await file.text();
+  if (extension === "json") return recordsFromJson(text, file.name);
+  if (extension === "csv") {
+    const key = importKeyFromName(file.name.replace(/\.csv$/i, ""));
+    if (!key) throw new Error(`Não reconheci o tipo do CSV "${file.name}". Use nomes como Projetos.csv, Contratos.csv, Tarefas.csv ou Pessoas.csv.`);
+    return recordsFromRows(parseCsv(text), key, file.name);
+  }
+
+  throw new Error(`Extensão .${extension} não suportada. Envie CSV, JSON, XLSX ou XLS.`);
+}
+
+function recordsFromJson(text, fileName) {
+  const payload = JSON.parse(text);
+  if (Array.isArray(payload)) return payload.map((item, index) => normalizeRecord(importedRecord(item, importKeyFromName(fileName) || "projetos", index), "planilha"));
+  if (Array.isArray(payload.registros)) return payload.registros.map((item) => normalizeRecord(item, "planilha"));
+
+  return Object.entries(payload).flatMap(([name, rows]) => {
+    const key = importKeyFromName(name);
+    return key && Array.isArray(rows) ? recordsFromRows(rows, key, name) : [];
+  });
+}
+
+function recordsFromRows(rows, key, sourceName) {
+  return rows
+    .filter((row) => hasRequiredData(row, IMPORT_SHEETS[key]))
+    .map((row, index) => normalizeRecord(importedRecord(row, key, index, sourceName), "planilha"));
+}
+
+function importedRecord(row, key, index, sourceName = key) {
+  const config = IMPORT_SHEETS[key];
+  const title = textValue(cellByAnyHeader(row, config.title)) || `${humanizeImportKey(key)} ${index + 1}`;
+  const idSeed = textValue(cellByAnyHeader(row, config.id)) || String(index + 1).padStart(3, "0");
+  const detalhes = rowDetails(row);
+  const pessoa = textValue(cellByAnyHeader(row, ["Nome Completo", "Nome", "ID Pessoa"]));
+  const suffix = ["skills", "avaliacoes", "alocacoes", "ausencias", "remuneracao"].includes(key) && pessoa ? ` - ${pessoa}` : "";
+
+  return {
+    id: `${key}-${idSeed}`,
+    tipo: config.tipo,
+    ordem: textValue(cellByAnyHeader(row, ["Ordem", "ID", "ID Projeto", "ID Tarefa", "ID Contrato"])) || String(index + 1).padStart(2, "0"),
+    projeto: `${title}${suffix}`,
+    categoria: config.categoria || textValue(cellByAnyHeader(row, config.category)) || defaultCategory(config.tipo),
+    valorAno: numberValue(cellByAnyHeader(row, config.value || [])),
+    sei: textValue(cellByAnyHeader(row, config.sei || [])),
+    contrato: textValue(cellByAnyHeader(row, config.contract || [])),
+    descricao: textValue(cellByAnyHeader(row, config.description || [])),
+    area: textValue(cellByAnyHeader(row, config.area || [])),
+    status: textValue(cellByAnyHeader(row, config.status || [])) || "Importado",
+    comentarios: textValue(cellByAnyHeader(row, config.comments || [])),
+    prazo: sheetDateValue(cellByAnyHeader(row, config.deadline || [])),
+    detalhes: {
+      ...detalhes,
+      "Origem da importação": sourceName,
+      "Tipo de importação": humanizeImportKey(key),
+    },
+    externalId: `planilha-${key}-${norm(idSeed).replaceAll(" ", "-")}`,
+    origem: "planilha",
+  };
+}
+
+function hasRequiredData(row, config) {
+  return config.required.some((header) => textValue(cellByHeader(row, header)));
+}
+
+function importKeyFromName(name) {
+  const value = norm(name).replace(/\.(csv|json|xlsx|xls)$/i, "");
+  const aliases = {
+    projeto: "projetos",
+    projetos: "projetos",
+    demandas: "projetos",
+    contrato: "contratos",
+    contratos: "contratos",
+    tarefa: "tarefas",
+    tarefas: "tarefas",
+    entregas: "tarefas",
+    pessoa: "pessoas",
+    pessoas: "pessoas",
+    equipe: "pessoas",
+    equipes: "pessoas",
+    time: "pessoas",
+    skills: "skills",
+    skill: "skills",
+    competencias: "skills",
+    avaliacoes: "avaliacoes",
+    avaliacao: "avaliacoes",
+    alocacoes: "alocacoes",
+    alocacao: "alocacoes",
+    ausencias: "ausencias",
+    ausencia: "ausencias",
+    remuneracao: "remuneracao",
+    remuneracoes: "remuneracao",
+    salarios: "remuneracao",
+    licitacoes: "licitacoes",
+    licitacao: "licitacoes",
+  };
+  return aliases[value] || null;
+}
+
+function humanizeImportKey(key) {
+  const map = {
+    projetos: "Projetos",
+    contratos: "Contratos",
+    tarefas: "Tarefas",
+    pessoas: "Pessoas",
+    skills: "Skills",
+    avaliacoes: "Avaliações",
+    alocacoes: "Alocações",
+    ausencias: "Ausências",
+    remuneracao: "Remuneração",
+    licitacoes: "Licitações",
+  };
+  return map[key] || key;
+}
+
+function rowDetails(row) {
+  return Object.fromEntries(Object.entries(row)
+    .map(([key, value]) => [String(key).trim(), value])
+    .filter(([key, value]) => key && !key.startsWith("__EMPTY") && textValue(value))
+    .map(([key, value]) => [key, value instanceof Date ? sheetDateValue(value) : textValue(value)]));
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ";" && !quoted) {
+      row.push(cell);
+      cell = "";
+    } else if (char === "," && !quoted && text.includes(",") && !text.includes(";")) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell);
+      if (row.some((value) => value.trim())) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell);
+  if (row.some((value) => value.trim())) rows.push(row);
+  const [headers = [], ...data] = rows;
+  return data.map((values) => Object.fromEntries(headers.map((header, index) => [header.trim(), values[index] ?? null])));
 }
 
 function spreadsheetRecords(sheet) {
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: true });
-  return rows
-    .filter((row) => cellByHeader(row, "Projeto"))
-    .map((row, index) => normalizeRecord({
-      id: index + 1,
-      ordem: textValue(cellByHeader(row, "Ordem")) || String(index + 1).padStart(2, "0"),
-      projeto: textValue(cellByHeader(row, "Projeto")),
-      categoria: textValue(cellByHeader(row, "Categoria")),
-      valorAno: numberValue(cellByHeader(row, "Valor ano")),
-      sei: textValue(cellByHeader(row, "SEI")),
-      contrato: textValue(cellByHeader(row, "Contrato")),
-      descricao: textValue(cellByHeader(row, "Descri\u00e7\u00e3o")),
-      area: textValue(cellByHeader(row, "\u00c1rea")),
-      status: textValue(cellByHeader(row, "Status")),
-      comentarios: textValue(cellByHeader(row, "Coment\u00e1rios")),
-      prazo: sheetDateValue(cellByHeader(row, "Prazo")),
-    }, "planilha"));
+  return recordsFromRows(rows, "projetos", "Projetos");
 }
 
 function cellByHeader(row, wanted) {
   const key = Object.keys(row).find((name) => norm(name) === norm(wanted));
   return key ? row[key] : null;
+}
+
+function cellByAnyHeader(row, headers = []) {
+  return headers.map((header) => cellByHeader(row, header)).find((value) => textValue(value));
 }
 
 function textValue(value) {
@@ -506,19 +859,50 @@ function textValue(value) {
 
 function numberValue(value) {
   if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const normalized = String(value)
+    .replace(/R\$/gi, "")
+    .replace(/\s/g, "")
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
+    .replace(",", ".");
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function sheetDateValue(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
-  return textValue(value);
+  if (typeof value === "number" && Number.isFinite(value) && value > 20000 && value < 80000) {
+    const date = new Date(Date.UTC(1899, 11, 30 + value));
+    return date.toISOString().slice(0, 10);
+  }
+  const text = textValue(value);
+  if (!text) return null;
+  const brDate = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (brDate) {
+    const [, day, month, year] = brDate;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${fullYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return isoDate ? isoDate[0] : text;
 }
 
 async function replaceCloudBaseline(source, title) {
   elements.cloudTitle.textContent = title;
   elements.cloudMessage.textContent = "Atualizando os registros de origem planilha.";
   elements.cloudActions.innerHTML = "";
+
+  if (!state.cloud.available || state.cloud.needsSeed) {
+    state.base = source;
+    persistImportedBaseline(source);
+    rebuildRecords();
+    hydrateFilters();
+    applyFilters();
+    renderCloudStatus();
+    elements.cloudTitle.textContent = "Base importada localmente";
+    elements.cloudMessage.textContent = `${source.length} registros carregados nesta sessão. Configure o Supabase para compartilhar com outros usuários.`;
+    return;
+  }
 
   try {
     await cloudRequest("/registros?origem=eq.planilha", {
@@ -530,6 +914,7 @@ async function replaceCloudBaseline(source, title) {
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(source.map(toDatabaseRecord)),
     });
+    clearImportedBaseline();
     await refreshCloudData();
   } catch (error) {
     state.cloud.error = error.message;
@@ -640,6 +1025,7 @@ function setSelectFilter(key, select, value, fallback) {
 
 function renderOperationalModules() {
   renderLicitacoes();
+  renderTarefas();
   renderContratos();
   renderPessoas();
   renderDocumentos();
@@ -661,18 +1047,34 @@ function renderLicitacoes() {
   });
 }
 
+function renderTarefas() {
+  const records = tarefaRecords();
+  renderRecordModule("tarefas", {
+    title: "Tarefas e prazos",
+    subtitle: "Controle de execução por responsável, prazo previsto, status, bloqueios e próxima ação.",
+    metrics: [
+      ["Total", records.length],
+      ["Atrasadas", records.filter(isOverdue).length],
+      ["Vencem em 7 dias", records.filter((item) => daysUntil(item.prazo) >= 0 && daysUntil(item.prazo) <= 7).length],
+      ["Sem responsável", records.filter((item) => !detailValue(item, "Responsável Principal") && !detailValue(item, "Responsavel Principal")).length],
+    ],
+    records: records.sort((a, b) => (daysUntil(a.prazo) ?? 99999) - (daysUntil(b.prazo) ?? 99999)),
+    empty: "Nenhuma tarefa importada. Envie Tarefas.csv ou a aba Tarefas.",
+  });
+}
+
 function renderContratos() {
   const records = contratoRecords();
   renderRecordModule("contratos", {
     title: "Contratos",
-    subtitle: "Registros com contrato informado ou criados diretamente como contrato.",
+    subtitle: "Controle de vigência com assinatura, início, vencimento, fornecedor, fiscal e gestor quando informados no CSV.",
     metrics: [
       ["Total", records.length],
-      ["Com SEI", records.filter((item) => item.sei).length],
-      ["Com prazo", records.filter((item) => item.prazo).length],
-      ["Sem \u00e1rea", records.filter((item) => !item.area).length],
+      ["Vencidos", records.filter(isOverdue).length],
+      ["Vencem em 90 dias", records.filter((item) => daysUntil(item.prazo) >= 0 && daysUntil(item.prazo) <= 90).length],
+      ["Sem vencimento", records.filter((item) => !item.prazo).length],
     ],
-    records,
+    records: records.sort((a, b) => (daysUntil(a.prazo) ?? 99999) - (daysUntil(b.prazo) ?? 99999)),
     empty: "Nenhum contrato vinculado encontrado.",
   });
 }
@@ -831,6 +1233,7 @@ async function saveEntry(event) {
     comentarios: elements.entryComments.value.trim() || (existing?.comentarios ?? (state.cloud.available && !state.cloud.needsSeed ? "Criado no CORTEX online" : "Criado no prot\u00f3tipo local")),
     prazo: elements.entryDeadline.value || null,
     arquivo: file ? { nome: file.name, tamanho: file.size, tipo: file.type || "desconhecido" } : existing?.arquivo || null,
+    detalhes: existing?.detalhes || {},
     criadoEm: existing?.criadoEm || new Date().toISOString(),
     externalId: existing?.externalId,
     origem: existing?.origem,
@@ -889,6 +1292,7 @@ function openDetail(key) {
     detailItem("Arquivo", record.arquivo ? `${record.arquivo.nome} (${formatBytes(record.arquivo.tamanho)})` : "-"),
     detailItem("Descri\u00e7\u00e3o", record.descricao || "Sem descri\u00e7\u00e3o cadastrada", true),
     detailItem("Comentarios", record.comentarios || "Sem comentarios", true),
+    ...detailItemsFromDetails(record.detalhes),
   ].join("");
   elements.detailActions.innerHTML = canMutateRecord(record) ? `
     <button class="danger-button" type="button" data-record-action="delete" data-record-key="${escapeHtml(record.key)}">
@@ -1030,10 +1434,15 @@ function contratoRecords() {
   return state.registros.filter((item) => item.tipo === "contrato" || Boolean(item.contrato));
 }
 
+function tarefaRecords() {
+  return state.registros.filter((item) => item.tipo === "tarefa");
+}
+
 function moduleToType(module) {
   const map = {
     licitacoes: "licitacao",
     contratos: "contrato",
+    tarefas: "tarefa",
     pessoas: "pessoa",
     documentos: "documento",
     projetos: "projeto",
@@ -1046,11 +1455,30 @@ function defaultCategory(tipo) {
   const map = {
     projeto: "Demanda",
     licitacao: "Licita\u00e7\u00f5es",
+    tarefa: "Tarefa",
     contrato: "Contrato",
     pessoa: "Pessoa",
     documento: "Documento",
   };
   return map[tipo] || "Demanda";
+}
+
+function daysUntil(value) {
+  const date = dateOnlyOrNull(value);
+  if (!date) return null;
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const targetUtc = Date.parse(`${date}T00:00:00Z`);
+  return Math.ceil((targetUtc - todayUtc) / 86400000);
+}
+
+function isOverdue(item) {
+  const days = daysUntil(item.prazo);
+  return days !== null && days < 0 && !["finalizado", "entregue", "concluido", "concluida", "encerrado"].includes(norm(item.status));
+}
+
+function detailValue(item, label) {
+  return item.detalhes?.[label];
 }
 
 function typeLabel(tipo) {
@@ -1059,6 +1487,7 @@ function typeLabel(tipo) {
     licitacao: "Licita\u00e7\u00e3o",
     contrato: "Contrato",
     pessoa: "Pessoa",
+    tarefa: "Tarefa",
     documento: "Documento",
     area: "\u00c1rea",
   };
@@ -1137,6 +1566,19 @@ function alertRow(label, value, critical, filter) {
       <span>${value}</span>
     </button>
   `;
+}
+
+function detailItemsFromDetails(details = {}) {
+  return Object.entries(details)
+    .filter(([label, value]) => label && textValue(value))
+    .slice(0, 24)
+    .map(([label, value]) => detailItem(label, formatDetailValue(value), String(value).length > 80));
+}
+
+function formatDetailValue(value) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return value;
 }
 
 function detailItem(label, value, full = false) {
