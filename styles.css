@@ -959,3 +959,19 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 }
+
+.import-help-note code {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 4px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #eddbbb;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.import-help-note p + p {
+  margin-top: 8px;
+}

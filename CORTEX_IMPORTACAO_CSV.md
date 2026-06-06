@@ -141,9 +141,31 @@ Arquivos auxiliares:
 
 `Remuneracao.csv`, avaliacoes e observacoes de pessoas podem conter dados sensiveis. Antes de usar dados reais na nuvem, ative autenticacao e politicas restritivas no Supabase. O script MVP ainda permite operacoes publicas para facilitar testes.
 
-## Atualizacao do banco Supabase
+## Atualizacao do banco Supabase: como fazer
 
-Antes de importar CSVs com campos novos, execute novamente o SQL de `supabase/01_criar_banco_mvp.sql` no Supabase. Ele cria/adiciona a coluna `detalhes`, usada para guardar todos os campos extras das novas planilhas.
+Antes de importar CSVs com campos novos na nuvem, execute novamente o SQL de `supabase/01_criar_banco_mvp.sql` no Supabase. Ele cria/adiciona a coluna `detalhes`, usada para guardar todos os campos extras das novas planilhas.
+
+Passo a passo:
+
+1. Abra o painel do Supabase em <https://supabase.com/dashboard>.
+2. Entre no projeto usado pelo CORTEX.
+3. No menu lateral, clique em **SQL Editor**.
+4. Clique em **New query**.
+5. No seu computador/repositório, abra o arquivo `supabase/01_criar_banco_mvp.sql`.
+6. Copie todo o conteúdo desse arquivo.
+7. Cole o conteúdo no editor SQL do Supabase.
+8. Clique em **Run**.
+9. Aguarde a execução terminar sem erro.
+10. Volte ao CORTEX, clique em **Atualizar** e depois em **Importar CSV/planilha**.
+
+Se voce quiser executar somente a atualizacao minima da coluna nova, rode este trecho no SQL Editor:
+
+```sql
+alter table public.registros
+add column if not exists detalhes jsonb not null default '{}'::jsonb;
+```
+
+Recomendacao: para evitar diferencas entre o banco e o sistema, prefira rodar o arquivo completo `supabase/01_criar_banco_mvp.sql`.
 
 ## O que foi atualizado no sistema
 

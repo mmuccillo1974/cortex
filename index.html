@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260606-importacao-guiada">
+    <link rel="stylesheet" href="styles.css?v=20260606-supabase-sql">
   </head>
   <body>
     <div class="app-shell">
@@ -305,7 +305,12 @@
             <span>Nome Completo, Vínculo, Cargo/Função, Segmento STI, Data de Nascimento e Data de Entrada.</span>
           </div>
         </div>
-        <p class="import-help-note">Dados de remuneração e avaliações são sensíveis: use na nuvem somente após configurar autenticação e permissões no Supabase.</p>
+        <div class="import-help-note">
+          <strong>Usa Supabase?</strong>
+          <p>Antes de importar campos novos na nuvem, abra o Supabase &gt; SQL Editor &gt; New query, cole o arquivo <code>supabase/01_criar_banco_mvp.sql</code> inteiro e clique em <strong>Run</strong>.</p>
+          <p>Atalho mínimo: execute <code>alter table public.registros add column if not exists detalhes jsonb not null default '{}'::jsonb;</code>.</p>
+          <p>Dados de remuneração e avaliações são sensíveis: use na nuvem somente após configurar autenticação e permissões.</p>
+        </div>
       </div>
     </dialog>
 
@@ -329,6 +334,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="data/projetos.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20260606-importacao-guiada"></script>
+    <script src="app.js?v=20260606-supabase-sql"></script>
   </body>
 </html>
