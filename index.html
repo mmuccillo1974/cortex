@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260605-importacao-csv">
+    <link rel="stylesheet" href="styles.css?v=20260606-importacao-guiada">
   </head>
   <body>
     <div class="app-shell">
@@ -265,6 +265,50 @@
       </form>
     </dialog>
 
+
+    <dialog id="import-help-dialog">
+      <div class="dialog-card import-help-card">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Importação de planilhas</p>
+            <h2>Como preparar o arquivo para o CORTEX</h2>
+          </div>
+          <button class="icon-button" id="close-import-help" type="button" title="Fechar">
+            <span data-lucide="x"></span>
+          </button>
+        </div>
+        <div class="import-help-grid">
+          <article>
+            <strong>1. Exporte do Excel como CSV UTF-8</strong>
+            <p>Se o sistema externo não aceitar `.xlsx`, salve cada aba como CSV UTF-8.</p>
+          </article>
+          <article>
+            <strong>2. Renomeie pelo módulo</strong>
+            <p>Use nomes como `Projetos.csv`, `Contratos.csv`, `Tarefas.csv`, `Pessoas.csv`, `Skills.csv` e `Avaliacoes.csv`.</p>
+          </article>
+          <article>
+            <strong>3. Importe no CORTEX</strong>
+            <p>Clique em Importar CSV/planilha e selecione um ou vários CSVs de uma vez.</p>
+          </article>
+        </div>
+        <div class="field-grid import-columns">
+          <div class="field-card">
+            <strong>Contratos</strong>
+            <span>Número do Contrato, Fornecedor, Objeto, Data de Assinatura, Data de Vencimento, Fiscal, Gestor e Status.</span>
+          </div>
+          <div class="field-card">
+            <strong>Tarefas</strong>
+            <span>Título da Tarefa, Responsável Principal, Área Responsável, Status da Tarefa, Prazo Previsto e Bloqueador.</span>
+          </div>
+          <div class="field-card">
+            <strong>Pessoas STI</strong>
+            <span>Nome Completo, Vínculo, Cargo/Função, Segmento STI, Data de Nascimento e Data de Entrada.</span>
+          </div>
+        </div>
+        <p class="import-help-note">Dados de remuneração e avaliações são sensíveis: use na nuvem somente após configurar autenticação e permissões no Supabase.</p>
+      </div>
+    </dialog>
+
     <dialog id="detail-dialog">
       <div class="dialog-card">
         <div class="dialog-header">
@@ -285,6 +329,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="data/projetos.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20260605-importacao-csv"></script>
+    <script src="app.js?v=20260606-importacao-guiada"></script>
   </body>
 </html>

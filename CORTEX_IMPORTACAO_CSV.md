@@ -144,3 +144,9 @@ Arquivos auxiliares:
 ## Atualizacao do banco Supabase
 
 Antes de importar CSVs com campos novos, execute novamente o SQL de `supabase/01_criar_banco_mvp.sql` no Supabase. Ele cria/adiciona a coluna `detalhes`, usada para guardar todos os campos extras das novas planilhas.
+
+## O que foi atualizado no sistema
+
+- O botao **Como importar** aparece ao lado da importacao e resume o passo a passo dentro do proprio CORTEX.
+- Quando o Supabase nao estiver configurado, a importacao por CSV funciona em modo local e fica salva no navegador por `localStorage` para nao sumir ao recarregar a pagina.
+- Quando o Supabase estiver configurado, a importacao substitui os registros de origem `planilha` na nuvem e preserva cadastros manuais.

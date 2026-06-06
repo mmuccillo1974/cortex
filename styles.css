@@ -908,3 +908,54 @@ dialog::backdrop {
     grid-row: 2;
   }
 }
+
+.import-help-card {
+  display: grid;
+  gap: 14px;
+}
+
+.import-help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.import-help-grid article {
+  min-height: 116px;
+  padding: 14px;
+  background: #eef7f5;
+  border: 1px solid #cfe5e0;
+  border-radius: 8px;
+}
+
+.import-help-grid strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.import-help-grid p,
+.import-help-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.import-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-help-note {
+  padding: 12px;
+  color: var(--warning);
+  background: #fff8ed;
+  border: 1px solid #eddbbb;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .import-help-grid,
+  .import-columns {
+    grid-template-columns: 1fr;
+  }
+}

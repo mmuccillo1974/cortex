@@ -1,4 +1,5 @@
 const STORAGE_KEY = "cortex.registros.v1";
+const IMPORT_STORAGE_KEY = "cortex.importacao.v1";
 
 const state = {
   base: [],
@@ -70,6 +71,8 @@ function cacheElements() {
   elements.detailContent = document.querySelector("#detail-content");
   elements.detailActions = document.querySelector("#detail-actions");
   elements.closeDetail = document.querySelector("#close-detail");
+  elements.importHelpDialog = document.querySelector("#import-help-dialog");
+  elements.closeImportHelp = document.querySelector("#close-import-help");
   elements.newEntry = document.querySelector("#new-entry-button");
   elements.saveEntry = document.querySelector("#save-entry");
   elements.export = document.querySelector("#export-button");
@@ -137,6 +140,7 @@ function bindEvents() {
   elements.export.addEventListener("click", exportData);
   elements.voice.addEventListener("click", handleVoiceInput);
   elements.closeDetail.addEventListener("click", () => elements.detailDialog.close());
+  elements.closeImportHelp.addEventListener("click", () => elements.importHelpDialog.close());
   elements.baseUpload.addEventListener("change", importSpreadsheet);
 
   document.addEventListener("click", (event) => {
@@ -151,6 +155,7 @@ function bindEvents() {
     if (cloudAction?.dataset.cloudAction === "refresh") refreshCloudData();
     if (cloudAction?.dataset.cloudAction === "reload-base") reloadPublishedBase();
     if (cloudAction?.dataset.cloudAction === "upload-base") elements.baseUpload.click();
+    if (cloudAction?.dataset.cloudAction === "import-help") elements.importHelpDialog.showModal();
 
     const recordAction = event.target.closest("[data-record-action]");
     if (recordAction?.dataset.recordAction === "edit") editRecord(recordAction.dataset.recordKey);
@@ -168,7 +173,7 @@ async function loadData() {
     localBase = data.map((item) => normalizeRecord(item, "planilha"));
   }
 
-  state.base = localBase;
+  state.base = loadImportedBaseline() || localBase;
   state.custom = loadCustomRecords();
   await connectCloudData();
   rebuildRecords();
@@ -209,6 +214,29 @@ function loadCustomRecords() {
 
 function persistCustomRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.custom, null, 2));
+}
+
+function loadImportedBaseline() {
+  try {
+    const raw = localStorage.getItem(IMPORT_STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    return Array.isArray(data) ? data.map((item) => normalizeRecord(item, "planilha")) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistImportedBaseline(records) {
+  localStorage.setItem(IMPORT_STORAGE_KEY, JSON.stringify(records.map(serializableRecord), null, 2));
+}
+
+function clearImportedBaseline() {
+  localStorage.removeItem(IMPORT_STORAGE_KEY);
+}
+
+function serializableRecord(record) {
+  const { key, source, ...rest } = record;
+  return rest;
 }
 
 async function connectCloudData() {
@@ -372,6 +400,7 @@ function renderCloudStatus() {
     elements.cloudMessage.textContent = `${state.base.length} registros dispon\u00edveis na nuvem para acesso em qualquer local.`;
     elements.cloudActions.innerHTML = `
       <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV/planilha</button>
+      <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
       <button class="ghost-button" type="button" data-cloud-action="reload-base"><span data-lucide="rotate-ccw"></span>Restaurar publicada</button>
       <button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Atualizar</button>
     `;
@@ -382,7 +411,11 @@ function renderCloudStatus() {
     status.classList.add("pending");
     elements.cloudTitle.textContent = "Banco conectado, sem dados";
     elements.cloudMessage.textContent = "Envie a base inicial para disponibilizar os registros na nuvem.";
-    elements.cloudActions.innerHTML = `<button class="primary-button" type="button" data-cloud-action="seed"><span data-lucide="cloud-upload"></span>Enviar base inicial</button>`;
+    elements.cloudActions.innerHTML = `
+      <button class="primary-button" type="button" data-cloud-action="seed"><span data-lucide="cloud-upload"></span>Enviar base inicial</button>
+      <button class="ghost-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV/planilha</button>
+      <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
+    `;
     return;
   }
 
@@ -391,6 +424,7 @@ function renderCloudStatus() {
   elements.cloudMessage.textContent = `${state.cloud.error || "Nuvem ainda n\u00e3o configurada."} Execute o script SQL no Supabase.`;
   elements.cloudActions.innerHTML = `
     <button class="primary-button" type="button" data-cloud-action="upload-base"><span data-lucide="file-up"></span>Importar CSV local</button>
+    <button class="ghost-button" type="button" data-cloud-action="import-help"><span data-lucide="circle-help"></span>Como importar</button>
     <button class="ghost-button" type="button" data-cloud-action="refresh"><span data-lucide="refresh-cw"></span>Tentar novamente</button>
   `;
 }
@@ -419,6 +453,7 @@ async function seedCloudData() {
       body: JSON.stringify(records),
     });
     localStorage.removeItem(STORAGE_KEY);
+    clearImportedBaseline();
     await refreshCloudData();
   } catch (error) {
     state.cloud.error = error.message;
@@ -439,6 +474,7 @@ async function reloadPublishedBase() {
   );
   if (!approved) return;
 
+  clearImportedBaseline();
   await replaceCloudBaseline(source, "Recarregando base publicada");
 }
 
@@ -834,6 +870,7 @@ async function replaceCloudBaseline(source, title) {
 
   if (!state.cloud.available || state.cloud.needsSeed) {
     state.base = source;
+    persistImportedBaseline(source);
     rebuildRecords();
     hydrateFilters();
     applyFilters();
@@ -853,6 +890,7 @@ async function replaceCloudBaseline(source, title) {
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(source.map(toDatabaseRecord)),
     });
+    clearImportedBaseline();
     await refreshCloudData();
   } catch (error) {
     state.cloud.error = error.message;
