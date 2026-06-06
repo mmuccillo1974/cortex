@@ -975,3 +975,24 @@ dialog::backdrop {
 .import-help-note p + p {
   margin-top: 8px;
 }
+
+.import-sql-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.import-sql-actions .ghost-button {
+  width: auto;
+  min-height: 34px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+#import-help-dialog #copy-supabase-sql-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}

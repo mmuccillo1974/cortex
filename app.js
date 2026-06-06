@@ -73,6 +73,8 @@ function cacheElements() {
   elements.closeDetail = document.querySelector("#close-detail");
   elements.importHelpDialog = document.querySelector("#import-help-dialog");
   elements.closeImportHelp = document.querySelector("#close-import-help");
+  elements.copySupabaseSql = document.querySelector("#copy-supabase-sql");
+  elements.copySupabaseSqlStatus = document.querySelector("#copy-supabase-sql-status");
   elements.newEntry = document.querySelector("#new-entry-button");
   elements.saveEntry = document.querySelector("#save-entry");
   elements.export = document.querySelector("#export-button");
@@ -141,6 +143,7 @@ function bindEvents() {
   elements.voice.addEventListener("click", handleVoiceInput);
   elements.closeDetail.addEventListener("click", () => elements.detailDialog.close());
   elements.closeImportHelp.addEventListener("click", () => elements.importHelpDialog.close());
+  elements.copySupabaseSql.addEventListener("click", copySupabaseSql);
   elements.baseUpload.addEventListener("change", importSpreadsheet);
 
   document.addEventListener("click", (event) => {
@@ -161,6 +164,27 @@ function bindEvents() {
     if (recordAction?.dataset.recordAction === "edit") editRecord(recordAction.dataset.recordKey);
     if (recordAction?.dataset.recordAction === "delete") deleteRecord(recordAction.dataset.recordKey);
   });
+}
+
+async function copySupabaseSql() {
+  elements.copySupabaseSqlStatus.textContent = "Carregando SQL...";
+
+  try {
+    const response = await fetch("supabase/01_criar_banco_mvp.sql");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const sql = await response.text();
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(sql);
+      elements.copySupabaseSqlStatus.textContent = "SQL copiado. Cole no Supabase e clique em Run.";
+      return;
+    }
+
+    window.prompt("Copie este SQL e cole no Supabase SQL Editor:", sql);
+    elements.copySupabaseSqlStatus.textContent = "Copie o SQL exibido e cole no Supabase.";
+  } catch (error) {
+    elements.copySupabaseSqlStatus.textContent = "Não consegui copiar. Clique em Abrir SQL e copie manualmente.";
+  }
 }
 
 async function loadData() {

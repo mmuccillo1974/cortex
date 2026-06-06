@@ -151,12 +151,14 @@ Passo a passo:
 2. Entre no projeto usado pelo CORTEX.
 3. No menu lateral, clique em **SQL Editor**.
 4. Clique em **New query**.
-5. No seu computador/repositório, abra o arquivo `supabase/01_criar_banco_mvp.sql`.
-6. Copie todo o conteúdo desse arquivo.
+5. No CORTEX, clique em **Como importar** e depois em **Copiar SQL**. Se preferir, clique em **Abrir SQL** para abrir o arquivo `supabase/01_criar_banco_mvp.sql` em outra aba.
+6. Copie todo o conteúdo desse arquivo SQL.
 7. Cole o conteúdo no editor SQL do Supabase.
 8. Clique em **Run**.
 9. Aguarde a execução terminar sem erro.
 10. Volte ao CORTEX, clique em **Atualizar** e depois em **Importar CSV/planilha**.
+
+O passo 5 significa apenas: pegar o texto do arquivo SQL do projeto. O botão **Copiar SQL** faz isso automaticamente. Se estiver usando o GitHub, também dá para abrir a pasta `supabase`, clicar em `01_criar_banco_mvp.sql`, selecionar todo o conteúdo e copiar.
 
 Se voce quiser executar somente a atualizacao minima da coluna nova, rode este trecho no SQL Editor:
 

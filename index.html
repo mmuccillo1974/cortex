@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260606-supabase-sql">
+    <link rel="stylesheet" href="styles.css?v=20260606-copiar-sql">
   </head>
   <body>
     <div class="app-shell">
@@ -308,6 +308,11 @@
         <div class="import-help-note">
           <strong>Usa Supabase?</strong>
           <p>Antes de importar campos novos na nuvem, abra o Supabase &gt; SQL Editor &gt; New query, cole o arquivo <code>supabase/01_criar_banco_mvp.sql</code> inteiro e clique em <strong>Run</strong>.</p>
+          <div class="import-sql-actions">
+            <a class="ghost-button" href="supabase/01_criar_banco_mvp.sql" target="_blank" rel="noopener">Abrir SQL</a>
+            <button class="ghost-button" id="copy-supabase-sql" type="button">Copiar SQL</button>
+            <span id="copy-supabase-sql-status" aria-live="polite"></span>
+          </div>
           <p>Atalho mínimo: execute <code>alter table public.registros add column if not exists detalhes jsonb not null default '{}'::jsonb;</code>.</p>
           <p>Dados de remuneração e avaliações são sensíveis: use na nuvem somente após configurar autenticação e permissões.</p>
         </div>
@@ -334,6 +339,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="data/projetos.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20260606-supabase-sql"></script>
+    <script src="app.js?v=20260606-copiar-sql"></script>
   </body>
 </html>
