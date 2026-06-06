@@ -1,2 +1,2 @@
 # cortex
-Centro de ORganização de Tarefas EXecutivas
+Central de ORganização de Tarefas EXecutivas
